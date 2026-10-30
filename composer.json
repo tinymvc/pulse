@@ -1,0 +1,28 @@
+{
+    "name": "tinymvc/pulse",
+    "description": "Monitor Tinymvc/Spark application activity, performance, and runtime events.",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2",
+        "tinymvc/tinycore": "^4.0 || dev-main"
+    },
+    "autoload": {
+        "psr-4": {
+            "Spark\\Pulse\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "@php tests/run.php"
+    },
+    "authors": [
+        {
+            "name": "Shahin Moyshan",
+            "email": "shahin.moyshan2@gmail.com"
+        }
+    ]
+}
