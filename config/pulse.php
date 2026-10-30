@@ -1,0 +1,104 @@
+<?php
+
+return [
+
+    'enabled' => env('PULSE_ENABLED', true),
+
+    'path' => env('PULSE_PATH', 'pulse'),
+
+    'domain' => env('PULSE_DOMAIN', null),
+
+    'middleware' => [
+        \Spark\Pulse\Http\Middleware\AuthorizePulse::class,
+    ],
+
+    'storage' => [
+        'driver' => env('PULSE_STORAGE_DRIVER', 'database'),
+        'table' => 'pulse_entries',
+        'connection' => env('PULSE_DB_CONNECTION', null),
+        'prune_hours' => 24,
+    ],
+
+    'slow_thresholds' => [
+        'request' => 500,
+        'query' => 50,
+        'job' => 1000,
+        'http_client' => 1000,
+    ],
+
+    'ignore_paths' => [
+        'pulse*',
+        'pulse/*',
+        'api/pulse*',
+        'favicon.ico',
+    ],
+
+    'ignore_commands' => [
+        'pulse:*',
+        'queue:work',
+    ],
+
+    'sensitive_keys' => [
+        'password',
+        'password_confirmation',
+        'secret',
+        'token',
+        'authorization',
+        'cookie',
+        'api_key',
+        'access_token',
+        'app_key',
+    ],
+
+
+    'watchers' => [
+        'requests' => [
+            'enabled' => true,
+            'ignore_status_codes' => [],
+        ],
+        'commands' => [
+            'enabled' => true,
+        ],
+        'jobs' => [
+            'enabled' => true,
+        ],
+        'cache' => [
+            'enabled' => true,
+        ],
+        'events' => [
+            'enabled' => true,
+            'ignore' => [],
+        ],
+        'exceptions' => [
+            'enabled' => true,
+        ],
+        'gates' => [
+            'enabled' => true,
+        ],
+        'http_client' => [
+            'enabled' => true,
+        ],
+        'logs' => [
+            'enabled' => true,
+            'level' => 'debug',
+        ],
+        'mail' => [
+            'enabled' => true,
+        ],
+        'models' => [
+            'enabled' => true,
+        ],
+        'queries' => [
+            'enabled' => true,
+            'detect_duplicates' => true,
+        ],
+        'views' => [
+            'enabled' => true,
+        ],
+        'performance' => [
+            'enabled' => true,
+            'sample_rate' => 100,
+        ],
+    ],
+
+];
