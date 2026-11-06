@@ -1,4 +1,8 @@
-<div class="space-y-4">
+@props([
+    'activeTab' => 'dashboard',
+])
+
+<div {{ $attributes->merge(['class' => 'space-y-4']) }}>
     <div class="flex items-center justify-between">
         <h2 class="text-xl font-bold text-white capitalize flex items-center space-x-2.5">
             <span class="text-2xl" x-text="activeIcon"></span>

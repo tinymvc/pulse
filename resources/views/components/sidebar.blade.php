@@ -1,4 +1,9 @@
-<aside class="w-64 border-r border-gray-800 bg-gray-900/50 p-4 space-y-1 overflow-y-auto flex-shrink-0">
+@props([
+    'counts' => [],
+    'activeTab' => 'dashboard',
+])
+
+<aside {{ $attributes->merge(['class' => 'w-64 border-r border-gray-800 bg-gray-900/50 p-4 space-y-1 overflow-y-auto flex-shrink-0']) }}>
     <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
         Telemetry Overview
     </div>

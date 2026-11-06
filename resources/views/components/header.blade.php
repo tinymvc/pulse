@@ -1,4 +1,9 @@
-<header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-40 px-6 py-3 flex items-center justify-between">
+@props([
+    'server' => [],
+    'path' => '/pulse',
+])
+
+<header {{ $attributes->merge(['class' => 'border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-40 px-6 py-3 flex items-center justify-between']) }}>
     <div class="flex items-center space-x-4">
         <a href="{{ $path }}" class="flex items-center space-x-2.5 group">
             <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-lg shadow-lg shadow-indigo-500/30 group-hover:bg-indigo-500 transition">
@@ -8,10 +13,12 @@
                 Spark Pulse
             </span>
         </a>
-        <span class="px-2.5 py-0.5 text-xs rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium flex items-center space-x-1.5">
+
+        <x-pulse::badge tone="success">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
             <span>Live Telemetry</span>
-        </span>
+        </x-pulse::badge>
+
         <span class="hidden md:inline-block text-xs text-gray-400 border-l border-gray-800 pl-4 font-mono">
             {{ $server['runtime']['app_env'] ?? 'local' }} · PHP {{ $server['runtime']['php_version'] ?? PHP_VERSION }} · Spark {{ $server['runtime']['spark_version'] ?? '4.x' }}
         </span>

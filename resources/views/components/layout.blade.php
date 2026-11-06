@@ -1,3 +1,10 @@
+@props([
+    'server' => [],
+    'path' => '/pulse',
+    'activeTab' => 'dashboard',
+    'counts' => [],
+])
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -35,16 +42,16 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen antialiased flex flex-col" x-data="pulseApp()" x-init="init()">
-    {{-- Top Navigation Header --}}
-    @include('pulse::partials.header', ['server' => $server, 'path' => $path])
+    {{-- Navigation Header Component --}}
+    <x-pulse::header :server="$server" :path="$path" />
 
-    {{-- Main Body --}}
-    @yield('content')
+    {{-- Main Page Content --}}
+    {{ $slot }}
 
-    {{-- Slide-over Drawer for Entry Details & Correlated Trace --}}
-    @include('pulse::partials.drawer')
+    {{-- Entry Detail & Correlated Trace Drawer Component --}}
+    <x-pulse::drawer />
 
-    {{-- Alpine.js Application Component Script --}}
-    @include('pulse::partials.script', ['counts' => $counts, 'server' => $server, 'activeTab' => $activeTab, 'path' => $path])
+    {{-- Alpine Reactive Component Script --}}
+    <x-pulse::script :counts="$counts" :server="$server" :active-tab="$activeTab" :path="$path" />
 </body>
 </html>

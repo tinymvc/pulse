@@ -55,11 +55,51 @@ class InstallCommand
             return 1;
         }
 
+        // 3. Optionally publish views
+        if (!empty($args['views'])) {
+            $viewsDest = dir_path("{$rootPath}/resources/views/vendor/pulse");
+            $viewsSrc = dir_path(__DIR__ . '/../../resources/views');
+            if (is_dir($viewsSrc)) {
+                $this->copyDirectory($viewsSrc, $viewsDest);
+                Prompt::message('Blade views published to resources/views/vendor/pulse', 'success');
+            }
+        }
+
         Prompt::newline();
         Prompt::message('Spark Pulse has been successfully installed!', 'success');
         Prompt::message('Access your dashboard at: ' . url(config('pulse.path', 'pulse')), 'info');
         Prompt::newline();
 
         return 0;
+    }
+
+    /**
+     * Recursively copy a directory.
+     */
+    private function copyDirectory(string $source, string $destination): void
+    {
+        if (!is_dir($destination)) {
+            @mkdir($destination, 0755, true);
+        }
+
+        $items = scandir($source);
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $srcPath = "{$source}/{$item}";
+            $destPath = "{$destination}/{$item}";
+
+            if (is_dir($srcPath)) {
+                $this->copyDirectory($srcPath, $destPath);
+            } else {
+                copy($srcPath, $destPath);
+            }
+        }
     }
 }

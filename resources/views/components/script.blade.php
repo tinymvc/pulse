@@ -1,3 +1,10 @@
+@props([
+    'counts' => [],
+    'server' => [],
+    'activeTab' => 'dashboard',
+    'path' => '/pulse',
+])
+
 <script>
     function pulseApp() {
         return {
