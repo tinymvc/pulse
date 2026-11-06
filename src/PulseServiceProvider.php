@@ -85,10 +85,14 @@ class PulseServiceProvider extends ServiceProvider
 
         // 1. Register View Namespace
         if ($this->app->bound(Blade::class)) {
-            $blade = $this->app->get(Blade::class);
-            $viewsPath = dir_path(__DIR__ . '/../resources/views');
-            if (is_dir($viewsPath)) {
-                $blade->usePath($viewsPath, 'pulse');
+            try {
+                $blade = $this->app->get(Blade::class);
+                $viewsPath = dir_path(__DIR__ . '/../resources/views');
+                if (is_dir($viewsPath)) {
+                    $blade->usePath($viewsPath, 'pulse');
+                }
+            } catch (\Throwable) {
+                // Ignore if views directory is not configured in current environment
             }
         }
 

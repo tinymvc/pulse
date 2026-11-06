@@ -6,12 +6,6 @@
         "php": ">=8.2",
         "tinymvc/tinycore": "^4.0 || dev-main"
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../tinycore"
-        }
-    ],
     "autoload": {
         "psr-4": {
             "Spark\\Pulse\\": "src/"
