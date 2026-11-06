@@ -5,6 +5,12 @@ namespace Spark\Pulse\Watchers;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Telemetry;
+use function array_slice;
+use function count;
+use function get_class;
+use function is_array;
+use function is_object;
+use function is_scalar;
 
 /**
  * Cache Watcher.
@@ -31,7 +37,7 @@ class CacheWatcher extends Watcher
                 'store' => $payload['store'] ?? 'default',
                 'value' => $this->previewValue($payload['value'] ?? null),
             ])
-            ->tags(['hit', $key]);
+                ->tags(['hit', $key]);
 
             $this->record($entry);
         });
@@ -43,7 +49,7 @@ class CacheWatcher extends Watcher
                 'key' => $key,
                 'store' => $payload['store'] ?? 'default',
             ])
-            ->tags(['miss', $key]);
+                ->tags(['miss', $key]);
 
             $this->record($entry);
         });
@@ -57,7 +63,7 @@ class CacheWatcher extends Watcher
                 'expiration' => $payload['expiration'] ?? null,
                 'value' => $this->previewValue($payload['value'] ?? null),
             ])
-            ->tags(['written', $key]);
+                ->tags(['written', $key]);
 
             $this->record($entry);
         });
@@ -69,7 +75,7 @@ class CacheWatcher extends Watcher
                 'keys' => $keys,
                 'store' => $payload['store'] ?? 'default',
             ])
-            ->tags(['forgotten']);
+                ->tags(['forgotten']);
 
             $this->record($entry);
         });

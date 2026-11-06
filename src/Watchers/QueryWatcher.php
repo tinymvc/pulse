@@ -49,7 +49,7 @@ class QueryWatcher extends Watcher
 
             // Duplicate detection within current request trace
             $batchId = \Spark\Pulse\Pulse::getBatchId();
-            $duplicateKey = $batchId . ':' . $sql;
+            $duplicateKey = "$batchId:$sql";
             self::$seenQueries[$duplicateKey] = (self::$seenQueries[$duplicateKey] ?? 0) + 1;
             $isDuplicate = self::$seenQueries[$duplicateKey] > 1;
 
@@ -72,9 +72,9 @@ class QueryWatcher extends Watcher
                 'is_duplicate' => $isDuplicate,
                 'duplicate_count' => self::$seenQueries[$duplicateKey],
             ])
-            ->duration($time)
-            ->familyHash($familyHash)
-            ->tags($tags);
+                ->duration($time)
+                ->familyHash($familyHash)
+                ->tags($tags);
 
             $this->record($entry);
         });

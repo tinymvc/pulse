@@ -27,7 +27,7 @@ class PruneCommand
         }
 
         $count = Pulse::instance()->prune($hours);
-        Prompt::message("Pruned {$count} Pulse entries older than {$hours} hours.", 'success');
+        Prompt::message("Pruned $count Pulse entries older than $hours hours.", 'success');
 
         return 0;
     }

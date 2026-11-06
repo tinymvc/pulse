@@ -85,8 +85,8 @@ class RequestWatcher extends Watcher
                 'response_status' => $statusCode,
                 'response_headers' => $response->getHeaders(),
             ])
-            ->duration($duration)
-            ->tags($tags);
+                ->duration($duration)
+                ->tags($tags);
 
             $this->record($entry);
         });

@@ -6,6 +6,11 @@ use Spark\Events;
 use Spark\Foundation\Application;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
+use function count;
+use function get_class;
+use function in_array;
+use function is_array;
+use function is_object;
 
 /**
  * Application Domain Event Watcher.
@@ -48,7 +53,7 @@ class EventWatcher extends Watcher
                 'name' => $eventName,
                 'payload' => $this->mask($this->formatPayload($payload)),
             ])
-            ->tags([$eventName]);
+                ->tags([$eventName]);
 
             $this->record($entry);
         });

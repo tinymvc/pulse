@@ -6,6 +6,7 @@ use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Telemetry;
 use Throwable;
+use function array_slice;
 
 /**
  * Exception Watcher.
@@ -56,8 +57,8 @@ class ExceptionWatcher extends Watcher
                 'trace' => $trace,
                 'handled' => (bool) ($payload['handled'] ?? false),
             ])
-            ->familyHash($familyHash)
-            ->tags([$class, 'error']);
+                ->familyHash($familyHash)
+                ->tags([$class, 'error']);
 
             $this->record($entry);
         });

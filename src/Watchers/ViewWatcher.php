@@ -40,8 +40,8 @@ class ViewWatcher extends Watcher
                 'duration_ms' => $time,
                 'data_keys' => (array) ($payload['data_keys'] ?? []),
             ])
-            ->duration($time)
-            ->tags([(string) $template]);
+                ->duration($time)
+                ->tags([(string) $template]);
 
             $this->record($entry);
         });

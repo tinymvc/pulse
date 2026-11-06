@@ -29,7 +29,7 @@ class ModelWatcher extends Watcher
             $key = $payload['key'] ?? null;
 
             // Short model basename
-            $shortName = substr(strrchr('\\' . $model, '\\'), 1);
+            $shortName = substr(strrchr("\\$model", '\\'), 1);
 
             $entry = Entry::make(EntryType::MODEL, [
                 'action' => $action,
@@ -40,7 +40,7 @@ class ModelWatcher extends Watcher
                 'attributes' => $this->mask((array) ($payload['attributes'] ?? [])),
                 'changes' => $this->mask((array) ($payload['changes'] ?? [])),
             ])
-            ->tags([$shortName, $action]);
+                ->tags([$shortName, $action]);
 
             $this->record($entry);
         });

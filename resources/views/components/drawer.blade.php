@@ -6,7 +6,8 @@
         {{-- Drawer Header --}}
         <div class="flex items-center justify-between border-b border-gray-800 pb-4">
             <div class="flex items-center space-x-2.5">
-                <span class="px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider font-mono"
+                <span
+                    class="px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider font-mono"
                     x-text="selectedEntry?.type">
                 </span>
                 <span class="text-xs font-mono text-gray-400" x-text="'ID: ' + selectedEntry?.id"></span>
@@ -23,7 +24,8 @@
                 <span>Trace Waterfall Correlation</span>
                 <span class="text-indigo-400">⚡ Correlated Trace</span>
             </div>
-            <div class="text-xs font-mono text-indigo-300 break-all" x-text="'Batch ID: ' + selectedEntry?.batch_id"></div>
+            <div class="text-xs font-mono text-indigo-300 break-all" x-text="'Batch ID: ' + selectedEntry?.batch_id">
+            </div>
             <div class="pt-1">
                 <button @click="fetchBatchTrace(selectedEntry?.batch_id)"
                     class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium flex items-center space-x-1">
@@ -34,15 +36,20 @@
 
             {{-- Correlated entries list if loaded --}}
             <div x-show="batchWaterfall !== null" class="mt-3 pt-3 border-t border-gray-800 space-y-1.5">
-                <div class="text-xs text-gray-400 font-semibold" x-text="'Correlated Steps (' + (batchWaterfall?.entries?.length || 0) + '):'"></div>
+                <div class="text-xs text-gray-400 font-semibold"
+                    x-text="'Correlated Steps (' + (batchWaterfall?.entries?.length || 0) + '):'"></div>
                 <div class="max-h-48 overflow-y-auto space-y-1 pr-1">
                     <template x-for="item in (batchWaterfall?.entries || [])" :key="item.id">
-                        <div class="text-xs p-2 rounded bg-gray-900 border border-gray-800/80 flex items-center justify-between">
+                        <div
+                            class="text-xs p-2 rounded bg-gray-900 border border-gray-800/80 flex items-center justify-between">
                             <div class="flex items-center space-x-2 overflow-hidden">
-                                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-indigo-500/10 text-indigo-400" x-text="item.type"></span>
+                                <span
+                                    class="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-indigo-500/10 text-indigo-400"
+                                    x-text="item.type"></span>
                                 <span class="text-gray-300 truncate" x-text="getEntrySummary(item)"></span>
                             </div>
-                            <span class="text-gray-500 font-mono text-[11px] flex-shrink-0" x-text="item.duration ? item.duration + ' ms' : ''"></span>
+                            <span class="text-gray-500 font-mono text-[11px] flex-shrink-0"
+                                x-text="item.duration ? item.duration + ' ms' : ''"></span>
                         </div>
                     </template>
                 </div>

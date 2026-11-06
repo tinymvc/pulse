@@ -8,6 +8,7 @@ use Spark\Pulse\Contracts\StorageContract;
 use Spark\Pulse\Storage\DatabaseStorage;
 use Spark\Pulse\Storage\MemoryStorage;
 use Spark\Support\Traits\Macroable;
+use function count;
 use function in_array;
 
 /**
@@ -61,7 +62,7 @@ class Pulse
         // Ensure deferred flush runs on application termination
         $app = Application::$app;
         if ($app !== null) {
-            $app->defer(fn() => $this->flush());
+            $app->defer($this->flush(...));
         }
     }
 

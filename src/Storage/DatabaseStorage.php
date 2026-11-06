@@ -28,9 +28,6 @@ class DatabaseStorage implements StorageContract
     /** @var string|null Specific database connection */
     private ?string $connection;
 
-    /** @var bool Whether installation has been verified for this instance */
-    private bool $installed = false;
-
     /**
      * DatabaseStorage constructor.
      */
@@ -43,7 +40,7 @@ class DatabaseStorage implements StorageContract
     /**
      * Get a query builder instance for the entries table.
      */
-    protected function query()
+    protected function query(): \Spark\Database\QueryBuilder
     {
         return DB::table($this->table);
     }
@@ -57,8 +54,6 @@ class DatabaseStorage implements StorageContract
         if (empty($entries)) {
             return;
         }
-
-        $this->ensureInstalled();
 
         $rows = [];
         foreach ($entries as $entry) {
@@ -94,8 +89,6 @@ class DatabaseStorage implements StorageContract
      */
     public function get(string $type, array $options = []): array
     {
-        $this->ensureInstalled();
-
         $limit = max(1, min((int) ($options['limit'] ?? 50), 200));
         $builder = $this->query()->where('type', $type);
 
@@ -122,11 +115,10 @@ class DatabaseStorage implements StorageContract
 
         $total = (clone $builder)->count();
 
-        $records = $builder->orderBy('created_at', 'DESC')
+        $rows = $builder->orderBy('created_at', 'DESC')
             ->limit($limit + 1)
-            ->get();
+            ->all();
 
-        $rows = is_array($records) ? $records : (method_exists($records, 'all') ? $records->all() : (array) $records);
         $hasMore = count($rows) > $limit;
         if ($hasMore) {
             array_pop($rows);
@@ -144,8 +136,6 @@ class DatabaseStorage implements StorageContract
      */
     public function find(string $id): ?array
     {
-        $this->ensureInstalled();
-
         $record = $this->query()->where('id', $id)->first();
         if (!$record) {
             return null;
@@ -159,12 +149,10 @@ class DatabaseStorage implements StorageContract
      */
     public function getByBatch(string $batchId): array
     {
-        $this->ensureInstalled();
-
         $records = $this->query()
             ->where('batch_id', $batchId)
             ->orderBy('created_at', 'ASC')
-            ->get();
+            ->all();
 
         return $this->formatRows($records);
     }
@@ -174,8 +162,6 @@ class DatabaseStorage implements StorageContract
      */
     public function count(?string $type = null, ?string $since = null): int
     {
-        $this->ensureInstalled();
-
         $builder = $this->query();
         if ($type !== null) {
             $builder->where('type', $type);
@@ -192,8 +178,6 @@ class DatabaseStorage implements StorageContract
      */
     public function counts(?string $since = null): array
     {
-        $this->ensureInstalled();
-
         $builder = $this->query()
             ->select(['type', DB::raw('COUNT(*) as total')])
             ->groupBy('type');
@@ -202,9 +186,7 @@ class DatabaseStorage implements StorageContract
             $builder->where('created_at', '>=', $since);
         }
 
-        $records = $builder->get();
-        $rows = is_array($records) ? $records : (method_exists($records, 'all') ? $records->all() : (array) $records);
-
+        $rows = $builder->all();
         $counts = array_fill_keys(\Spark\Pulse\EntryType::all(), 0);
         foreach ($rows as $row) {
             $row = (array) $row;
@@ -222,8 +204,6 @@ class DatabaseStorage implements StorageContract
      */
     public function prune(int $hours): int
     {
-        $this->ensureInstalled();
-
         $cutoff = gmdate('Y-m-d\TH:i:s.v\Z', time() - ($hours * 3600));
 
         return (int) $this->query()
@@ -236,39 +216,7 @@ class DatabaseStorage implements StorageContract
      */
     public function clear(): void
     {
-        $this->ensureInstalled();
-
         $this->query()->truncate();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function ensureInstalled(): void
-    {
-        if ($this->installed) {
-            return;
-        }
-
-        try {
-            if (!Schema::hasTable($this->table)) {
-                Schema::create($this->table, function (Blueprint $table) {
-                    $table->string('id', 36)->primary();
-                    $table->string('batch_id', 36)->index();
-                    $table->string('type', 30)->index();
-                    $table->string('family_hash', 64)->nullable()->index();
-                    $table->float('duration')->nullable()->index();
-                    $table->longText('content');
-                    $table->text('tags')->nullable();
-                    $table->string('created_at', 30)->index();
-                    $table->index(['type', 'created_at']);
-                });
-            }
-            $this->installed = true;
-        } catch (\Throwable $e) {
-            // Log and allow subsequent attempts
-            tracer_log('Pulse database table creation check failed: ' . $e->getMessage());
-        }
     }
 
     /**
@@ -293,12 +241,11 @@ class DatabaseStorage implements StorageContract
     /**
      * Format multiple database records.
      *
-     * @param iterable $records
+     * @param iterable $rows
      * @return array
      */
-    protected function formatRows(iterable $records): array
+    protected function formatRows(iterable $rows): array
     {
-        $rows = is_array($records) ? $records : (method_exists($records, 'all') ? $records->all() : (array) $records);
         $formatted = [];
         foreach ($rows as $row) {
             $formatted[] = $this->formatRow($row);

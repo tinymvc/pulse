@@ -172,12 +172,4 @@ class MemoryStorage implements StorageContract
     {
         $this->entries = [];
     }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function ensureInstalled(): void
-    {
-        // No-op for memory storage
-    }
 }

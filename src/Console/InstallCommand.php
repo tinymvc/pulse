@@ -30,30 +30,20 @@ class InstallCommand
         $rootPath = $app !== null ? $app->getPath() : getcwd();
 
         // 1. Publish configuration file
-        $configDest = dir_path("{$rootPath}/config/pulse.php");
-        $configSrc = dir_path(__DIR__ . '/../../config/pulse.php');
+        $this->copyFile(
+            dir_path(__DIR__ . '/../../config/pulse.php'),
+            dir_path("$rootPath/config/pulse.php"),
+            'Configuration file published to config/pulse.php',
+            'Configuration file could not be copied to config/pulse.php or already exists.'
+        );
 
-        if (!file_exists($configDest)) {
-            if (!is_dir(dirname($configDest))) {
-                @mkdir(dirname($configDest), 0755, true);
-            }
-            if (copy($configSrc, $configDest)) {
-                Prompt::message('Configuration file published to config/pulse.php', 'success');
-            } else {
-                Prompt::message('Could not copy configuration file to config/pulse.php', 'warning');
-            }
-        } else {
-            Prompt::message('Configuration file already exists at config/pulse.php', 'info');
-        }
-
-        // 2. Ensure Database Tables Exist
-        try {
-            Pulse::instance()->storage()->ensureInstalled();
-            Prompt::message('Pulse storage tables initialized successfully.', 'success');
-        } catch (\Throwable $e) {
-            Prompt::message('Failed to initialize database tables: ' . $e->getMessage(), 'danger');
-            return 1;
-        }
+        // 2. Publish migration file
+        $this->copyFile(
+            dir_path(__DIR__ . '/../../database/migrations/migration_2026_10_30_000000_pulse_entries.php'),
+            dir_path("$rootPath/database/migrations/migration_2026_10_30_000000_pulse_entries.php"),
+            'Migration file published to database/migrations/migration_2026_10_30_000000_pulse_entries.php',
+            'Migration file could not be copied to database/migrations/migration_2026_10_30_000000_pulse_entries.php or already exists.'
+        );
 
         // 3. Optionally publish views
         if (!empty($args['views'])) {
@@ -92,8 +82,8 @@ class InstallCommand
                 continue;
             }
 
-            $srcPath = "{$source}/{$item}";
-            $destPath = "{$destination}/{$item}";
+            $srcPath = "$source/$item";
+            $destPath = "$destination/$item}";
 
             if (is_dir($srcPath)) {
                 $this->copyDirectory($srcPath, $destPath);
@@ -101,5 +91,23 @@ class InstallCommand
                 copy($srcPath, $destPath);
             }
         }
+    }
+
+    private function copyFile(
+        string $source,
+        string $destination,
+        string $message,
+        string $existsMessage
+    ): void {
+        if (!file_exists($destination)) {
+            if (!is_dir(dirname($destination))) {
+                @mkdir(dirname($destination), 0755, true);
+            }
+            if (copy($source, $destination)) {
+                Prompt::message($message, 'success');
+            }
+        }
+
+        Prompt::message($existsMessage, 'warning');
     }
 }

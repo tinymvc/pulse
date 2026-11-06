@@ -5,6 +5,7 @@ namespace Spark\Pulse\Watchers;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Telemetry;
+use function in_array;
 
 /**
  * Application Log Watcher.
@@ -38,7 +39,7 @@ class LogWatcher extends Watcher
                 'message' => $message,
                 'context' => $this->mask($context),
             ])
-            ->tags($tags);
+                ->tags($tags);
 
             $this->record($entry);
         });

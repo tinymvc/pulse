@@ -38,7 +38,7 @@ class MailWatcher extends Watcher
                 'is_html' => (bool) ($payload['is_html'] ?? true),
                 'transport' => $payload['transport'] ?? 'smtp',
             ])
-            ->tags(['sent', ...$to]);
+                ->tags(['sent', ...$to]);
 
             $this->record($entry);
         });
@@ -54,7 +54,7 @@ class MailWatcher extends Watcher
                 'error' => $payload['error'] ?? 'Unknown error',
                 'transport' => $payload['transport'] ?? 'smtp',
             ])
-            ->tags(['failed', 'error', ...$to]);
+                ->tags(['failed', 'error', ...$to]);
 
             $this->record($entry);
         });

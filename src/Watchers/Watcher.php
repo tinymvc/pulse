@@ -5,6 +5,7 @@ namespace Spark\Pulse\Watchers;
 use Spark\Pulse\Contracts\WatcherContract;
 use Spark\Pulse\Entry;
 use Spark\Pulse\Pulse;
+use function is_array;
 
 /**
  * Base Watcher implementation for Spark Pulse.

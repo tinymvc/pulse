@@ -3,7 +3,6 @@
 namespace Spark\Pulse\Console;
 
 use Spark\Console\Prompt;
-use Spark\Pulse\EntryType;
 use Spark\Pulse\Pulse;
 use Spark\Pulse\Recorders\ServerPerformanceRecorder;
 use function sprintf;

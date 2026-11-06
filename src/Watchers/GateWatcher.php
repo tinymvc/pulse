@@ -5,6 +5,9 @@ namespace Spark\Pulse\Watchers;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Telemetry;
+use function get_class;
+use function is_object;
+use function is_scalar;
 
 /**
  * Gate Authorization Watcher.
@@ -44,7 +47,7 @@ class GateWatcher extends Watcher
                 'user' => $userInfo,
                 'arguments' => $this->mask((array) ($payload['arguments'] ?? [])),
             ])
-            ->tags($tags);
+                ->tags($tags);
 
             $this->record($entry);
         });

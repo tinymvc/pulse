@@ -20,21 +20,76 @@
             batchWaterfall: null,
             searchQuery: '',
 
-            navItems: [
-                { type: 'request', label: 'Requests', icon: '🌐' },
-                { type: 'command', label: 'Commands', icon: '💻' },
-                { type: 'job', label: 'Jobs', icon: '⚡' },
-                { type: 'cache', label: 'Cache', icon: '📦' },
-                { type: 'event', label: 'Events', icon: '📢' },
-                { type: 'exception', label: 'Exceptions', icon: '💥' },
-                { type: 'gate', label: 'Gates', icon: '🔒' },
-                { type: 'http_client', label: 'HTTP Client', icon: '🌍' },
-                { type: 'log', label: 'Logs', icon: '📝' },
-                { type: 'mail', label: 'Mail', icon: '✉️' },
-                { type: 'model', label: 'Models', icon: '🗄️' },
-                { type: 'query', label: 'Queries', icon: '🔍' },
-                { type: 'view', label: 'Views', icon: '🎨' },
-                { type: 'performance', label: 'Performance', icon: '📈' },
+            navItems: [{
+                    type: 'request',
+                    label: 'Requests',
+                    icon: '🌐'
+                },
+                {
+                    type: 'command',
+                    label: 'Commands',
+                    icon: '💻'
+                },
+                {
+                    type: 'job',
+                    label: 'Jobs',
+                    icon: '⚡'
+                },
+                {
+                    type: 'cache',
+                    label: 'Cache',
+                    icon: '📦'
+                },
+                {
+                    type: 'event',
+                    label: 'Events',
+                    icon: '📢'
+                },
+                {
+                    type: 'exception',
+                    label: 'Exceptions',
+                    icon: '💥'
+                },
+                {
+                    type: 'gate',
+                    label: 'Gates',
+                    icon: '🔒'
+                },
+                {
+                    type: 'http_client',
+                    label: 'HTTP Client',
+                    icon: '🌍'
+                },
+                {
+                    type: 'log',
+                    label: 'Logs',
+                    icon: '📝'
+                },
+                {
+                    type: 'mail',
+                    label: 'Mail',
+                    icon: '✉️'
+                },
+                {
+                    type: 'model',
+                    label: 'Models',
+                    icon: '🗄️'
+                },
+                {
+                    type: 'query',
+                    label: 'Queries',
+                    icon: '🔍'
+                },
+                {
+                    type: 'view',
+                    label: 'Views',
+                    icon: '🎨'
+                },
+                {
+                    type: 'performance',
+                    label: 'Performance',
+                    icon: '📈'
+                },
             ],
 
             get activeIcon() {
@@ -100,8 +155,7 @@
                         const data = await res.json();
                         this.entries = data.entries || [];
                     }
-                } catch (e) {
-                } finally {
+                } catch (e) {} finally {
                     if (!silent) this.loading = false;
                 }
             },
@@ -124,7 +178,9 @@
             async clearEntries() {
                 if (!confirm('Are you sure you want to clear all Pulse recorded entries?')) return;
                 try {
-                    await fetch(`${this.basePath}/api/clear`, { method: 'POST' });
+                    await fetch(`${this.basePath}/api/clear`, {
+                        method: 'POST'
+                    });
                     this.entries = [];
                     for (let k in this.counts) this.counts[k] = 0;
                 } catch (e) {}
@@ -132,9 +188,12 @@
 
             getTagClass(tag) {
                 tag = (tag || '').toLowerCase();
-                if (['error', 'failed', 'denied'].includes(tag)) return 'bg-red-500/20 text-red-300 border border-red-500/30';
-                if (['slow', 'duplicate'].includes(tag)) return 'bg-amber-500/20 text-amber-300 border border-amber-500/30';
-                if (['success', 'allowed', 'hit', 'sent', 'processed'].includes(tag)) return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                if (['error', 'failed', 'denied'].includes(tag))
+                    return 'bg-red-500/20 text-red-300 border border-red-500/30';
+                if (['slow', 'duplicate'].includes(tag))
+                    return 'bg-amber-500/20 text-amber-300 border border-amber-500/30';
+                if (['success', 'allowed', 'hit', 'sent', 'processed'].includes(tag))
+                    return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
                 if (['post', 'written'].includes(tag)) return 'bg-blue-500/20 text-blue-300 border border-blue-500/30';
                 return 'bg-gray-800 text-gray-300 border border-gray-700';
             },
@@ -142,20 +201,34 @@
             getEntrySummary(entry) {
                 const c = entry.content || {};
                 switch (entry.type) {
-                    case 'request': return `${c.method || 'GET'} ${c.uri || '/'}`;
-                    case 'query': return c.sql || 'SQL Query';
-                    case 'exception': return `${c.class || 'Exception'}: ${c.message || ''}`;
-                    case 'command': return `spark ${c.name || ''}`;
-                    case 'job': return c.name || 'Queue Job';
-                    case 'cache': return `[${c.action || ''}] ${c.key || ''}`;
-                    case 'event': return c.name || 'Event';
-                    case 'gate': return `Gate: ${c.ability || ''} (${c.result ? 'Allowed' : 'Denied'})`;
-                    case 'http_client': return `${c.method || 'GET'} ${c.url || ''}`;
-                    case 'log': return `[${c.level || ''}] ${c.message || ''}`;
-                    case 'mail': return `Mail to ${(c.to || []).join(', ')}: ${c.subject || ''}`;
-                    case 'model': return `${c.model || ''} (${c.action || ''})`;
-                    case 'view': return `View: ${c.template || c.path || ''}`;
-                    default: return JSON.stringify(c).substring(0, 80);
+                    case 'request':
+                        return `${c.method || 'GET'} ${c.uri || '/'}`;
+                    case 'query':
+                        return c.sql || 'SQL Query';
+                    case 'exception':
+                        return `${c.class || 'Exception'}: ${c.message || ''}`;
+                    case 'command':
+                        return `spark ${c.name || ''}`;
+                    case 'job':
+                        return c.name || 'Queue Job';
+                    case 'cache':
+                        return `[${c.action || ''}] ${c.key || ''}`;
+                    case 'event':
+                        return c.name || 'Event';
+                    case 'gate':
+                        return `Gate: ${c.ability || ''} (${c.result ? 'Allowed' : 'Denied'})`;
+                    case 'http_client':
+                        return `${c.method || 'GET'} ${c.url || ''}`;
+                    case 'log':
+                        return `[${c.level || ''}] ${c.message || ''}`;
+                    case 'mail':
+                        return `Mail to ${(c.to || []).join(', ')}: ${c.subject || ''}`;
+                    case 'model':
+                        return `${c.model || ''} (${c.action || ''})`;
+                    case 'view':
+                        return `View: ${c.template || c.path || ''}`;
+                    default:
+                        return JSON.stringify(c).substring(0, 80);
                 }
             },
 

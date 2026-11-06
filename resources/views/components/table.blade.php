@@ -7,7 +7,8 @@
         <h2 class="text-xl font-bold text-white capitalize flex items-center space-x-2.5">
             <span class="text-2xl" x-text="activeIcon"></span>
             <span x-text="activeTab"></span>
-            <span class="text-xs px-2.5 py-0.5 rounded-full bg-gray-800 text-gray-400 font-mono font-normal" x-text="(entries.length || 0) + ' entries'"></span>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-gray-800 text-gray-400 font-mono font-normal"
+                x-text="(entries.length || 0) + ' entries'"></span>
         </h2>
 
         {{-- Filter Input --}}
@@ -27,14 +28,16 @@
     <div class="bg-gray-900/70 border border-gray-800 rounded-xl overflow-hidden shadow-sm">
         {{-- Loading Indicator --}}
         <div x-show="loading" class="p-10 text-center text-gray-400 text-sm flex items-center justify-center space-x-2">
-            <span class="inline-block w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>
+            <span
+                class="inline-block w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>
             <span>Loading entries...</span>
         </div>
 
         {{-- Empty State --}}
         <div x-show="!loading && entries.length === 0" class="p-14 text-center text-gray-500 text-sm">
             <div class="text-3xl mb-2">📭</div>
-            <p>No telemetry entries recorded for <span class="capitalize text-gray-300 font-medium" x-text="activeTab"></span> yet.</p>
+            <p>No telemetry entries recorded for <span class="capitalize text-gray-300 font-medium"
+                    x-text="activeTab"></span> yet.</p>
         </div>
 
         {{-- Entries Row List --}}
@@ -47,8 +50,7 @@
                         <div class="flex items-center space-x-1.5 flex-shrink-0">
                             <template x-for="tag in (entry.tags || [])" :key="tag">
                                 <span class="px-2 py-0.5 rounded text-xs font-semibold font-mono"
-                                    :class="getTagClass(tag)"
-                                    x-text="tag">
+                                    :class="getTagClass(tag)" x-text="tag">
                                 </span>
                             </template>
                         </div>
@@ -60,7 +62,8 @@
                     </div>
 
                     <div class="flex items-center space-x-4 text-xs text-gray-400 flex-shrink-0 font-mono">
-                        <span x-show="entry.duration !== null" class="px-2 py-0.5 rounded bg-gray-800 text-gray-300" x-text="entry.duration + ' ms'"></span>
+                        <span x-show="entry.duration !== null" class="px-2 py-0.5 rounded bg-gray-800 text-gray-300"
+                            x-text="entry.duration + ' ms'"></span>
                         <span x-text="formatTime(entry.created_at)"></span>
                         <span class="text-gray-600 group-hover:text-gray-300 transition">→</span>
                     </div>

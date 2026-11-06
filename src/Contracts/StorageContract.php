@@ -76,11 +76,4 @@ interface StorageContract
      * @return void
      */
     public function clear(): void;
-
-    /**
-     * Ensure database table or storage container exists.
-     *
-     * @return void
-     */
-    public function ensureInstalled(): void;
 }

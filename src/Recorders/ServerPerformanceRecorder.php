@@ -2,6 +2,10 @@
 
 namespace Spark\Pulse\Recorders;
 
+use function count;
+use function floatval;
+use function strlen;
+
 /**
  * Cross-Platform Server & Runtime Performance Recorder.
  *
@@ -228,7 +232,7 @@ class ServerPerformanceRecorder
             'os' => PHP_OS . ' (' . PHP_OS_FAMILY . ')',
             'php_version' => PHP_VERSION,
             'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? (PHP_SAPI === 'cli' ? 'CLI (' . php_sapi_name() . ')' : 'Web Server'),
-            'spark_version' => defined('\Spark\Foundation\Application::VERSION') ? \Spark\Foundation\Application::VERSION : '4.x',
+            'spark_version' => \Spark\Foundation\Application::VERSION,
             'app_env' => env('APP_ENV', 'local'),
             'app_debug' => (bool) config('app.debug', false),
             'uptime_seconds' => self::getSystemUptime(),

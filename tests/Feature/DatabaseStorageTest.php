@@ -13,7 +13,6 @@ class DatabaseStorageTest extends TestCase
     public function test_ensure_installed_creates_table_and_stores_entries(): void
     {
         $storage = new DatabaseStorage();
-        $storage->ensureInstalled();
 
         $this->assertTrue(Schema::hasTable('pulse_entries'));
 
@@ -22,18 +21,18 @@ class DatabaseStorageTest extends TestCase
             'uri' => '/api/users',
             'status' => 200,
         ])
-        ->duration(120.5)
-        ->familyHash(md5('GET /api/users'))
-        ->tags(['api', '200']);
+            ->duration(120.5)
+            ->familyHash(md5('GET /api/users'))
+            ->tags(['api', '200']);
 
         $entry2 = Entry::make(EntryType::REQUEST, [
             'method' => 'POST',
             'uri' => '/api/orders',
             'status' => 201,
         ])
-        ->duration(600.0)
-        ->familyHash(md5('POST /api/orders'))
-        ->tags(['api', '201', 'slow']);
+            ->duration(600.0)
+            ->familyHash(md5('POST /api/orders'))
+            ->tags(['api', '201', 'slow']);
 
         $storage->store([$entry1, $entry2]);
 
@@ -70,7 +69,6 @@ class DatabaseStorageTest extends TestCase
     public function test_prune_removes_expired_records(): void
     {
         $storage = new DatabaseStorage();
-        $storage->ensureInstalled();
 
         $oldEntry = Entry::make(EntryType::LOG, ['message' => 'old log']);
         $oldEntry->createdAt = gmdate('Y-m-d\TH:i:s.000000\Z', time() - (48 * 3600));

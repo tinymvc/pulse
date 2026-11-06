@@ -6,6 +6,8 @@ use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Queue\Contracts\JobContract;
 use Spark\Telemetry;
+use function get_class;
+use function is_object;
 
 /**
  * Queue Job Watcher.
@@ -37,7 +39,7 @@ class JobWatcher extends Watcher
                 'queue' => $queue,
                 'payload' => $job instanceof JobContract ? $job->getPayload() : [],
             ])
-            ->tags([$jobName, $queue, 'queued']);
+                ->tags([$jobName, $queue, 'queued']);
 
             $this->record($entry);
         });
@@ -62,8 +64,8 @@ class JobWatcher extends Watcher
                 'queue' => $queue,
                 'duration_ms' => $duration,
             ])
-            ->duration($duration)
-            ->tags($tags);
+                ->duration($duration)
+                ->tags($tags);
 
             $this->record($entry);
         });
@@ -90,8 +92,8 @@ class JobWatcher extends Watcher
                     'line' => $exception->getLine(),
                 ] : null,
             ])
-            ->duration($duration)
-            ->tags([$jobName, $queue, 'failed']);
+                ->duration($duration)
+                ->tags([$jobName, $queue, 'failed']);
 
             $this->record($entry);
         });
