@@ -55,6 +55,14 @@ interface StorageContract
     public function count(?string $type = null, ?string $since = null): int;
 
     /**
+     * Get aggregated counts grouped by entry type.
+     *
+     * @param string|null $since ISO timestamp
+     * @return array<string, int>
+     */
+    public function counts(?string $since = null): array;
+
+    /**
      * Prune entries older than specified hours.
      *
      * @param int $hours

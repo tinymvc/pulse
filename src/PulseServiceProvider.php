@@ -37,9 +37,6 @@ use function is_string;
  */
 class PulseServiceProvider extends ServiceProvider
 {
-    /** @var \WeakMap|null Track booted routers to prevent duplicate route registrations */
-    private static ?\WeakMap $bootedRouters = null;
-
     /** @var array<class-string> All 14 Telemetry Watchers */
     protected array $watchers = [
         RequestWatcher::class,
@@ -98,31 +95,26 @@ class PulseServiceProvider extends ServiceProvider
 
         // 2. Register Dashboard Routes
         if ($this->app->bound(Router::class)) {
-            self::$bootedRouters ??= new \WeakMap();
             $router = $this->app->get(Router::class);
+            $path = trim((string) config('pulse.path', 'pulse'), '/');
+            $configured = (array) config('pulse.middleware', [\Spark\Pulse\Http\Middleware\AuthorizePulse::class]);
+            $middleware = [];
+            $middlewareManager = $this->app->bound(Middleware::class) ? $this->app->get(Middleware::class) : null;
 
-            if (!isset(self::$bootedRouters[$router])) {
-                self::$bootedRouters[$router] = true;
-                $path = trim((string) config('pulse.path', 'pulse'), '/');
-                $configured = (array) config('pulse.middleware', [\Spark\Pulse\Http\Middleware\AuthorizePulse::class]);
-                $middleware = [];
-                $middlewareManager = $this->app->bound(Middleware::class) ? $this->app->get(Middleware::class) : null;
-
-                foreach ($configured as $item) {
-                    if (is_callable($item) || (is_string($item) && class_exists($item))) {
-                        $middleware[] = $item;
-                    } elseif ($middlewareManager !== null && is_string($item) && $middlewareManager->has($item)) {
-                        $middleware[] = $item;
-                    }
+            foreach ($configured as $item) {
+                if (is_callable($item) || (is_string($item) && class_exists($item))) {
+                    $middleware[] = $item;
+                } elseif ($middlewareManager !== null && is_string($item) && $middlewareManager->has($item)) {
+                    $middleware[] = $item;
                 }
-
-                $router->group([
-                    'prefix' => $path,
-                    'middleware' => $middleware,
-                ], static function () {
-                    require __DIR__ . '/../routes/web.php';
-                });
             }
+
+            $router->group([
+                'prefix' => $path,
+                'middleware' => $middleware,
+            ], static function () {
+                require __DIR__ . '/../routes/web.php';
+            });
         }
 
         // 3. Register CLI Commands

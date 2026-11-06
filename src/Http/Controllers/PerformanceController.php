@@ -23,16 +23,9 @@ class PerformanceController
     {
         $pulse = Pulse::instance();
 
-        $counts = [];
-        foreach (EntryType::all() as $type) {
-            $counts[$type] = $pulse->storage()->count($type);
-        }
-
-        $sample = ServerPerformanceRecorder::sample();
-
         return json([
-            'server' => $sample,
-            'counts' => $counts,
+            'server' => ServerPerformanceRecorder::sample(),
+            'counts' => $pulse->counts(),
             'recording' => $pulse->isRecording(),
         ]);
     }

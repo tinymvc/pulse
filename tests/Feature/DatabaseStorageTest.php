@@ -39,6 +39,13 @@ class DatabaseStorageTest extends TestCase
 
         $this->assertSame(2, $storage->count(EntryType::REQUEST));
 
+        // Test single-query grouped counts across all types
+        $counts = $storage->counts();
+        $this->assertIsArray($counts);
+        $this->assertSame(2, $counts[EntryType::REQUEST]);
+        $this->assertSame(0, $counts[EntryType::QUERY]);
+        $this->assertCount(14, $counts);
+
         // Test find
         $found = $storage->find($entry1->id);
         $this->assertNotNull($found);

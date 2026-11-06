@@ -4,6 +4,7 @@ namespace Spark\Pulse\Storage;
 
 use Spark\Pulse\Contracts\StorageContract;
 use Spark\Pulse\Entry;
+use function array_key_exists;
 use function array_slice;
 use function count;
 use function is_array;
@@ -126,6 +127,29 @@ class MemoryStorage implements StorageContract
         });
 
         return count($filtered);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function counts(?string $since = null): array
+    {
+        $counts = array_fill_keys(\Spark\Pulse\EntryType::all(), 0);
+
+        foreach ($this->entries as $entry) {
+            $type = (string) ($entry['type'] ?? '');
+            if (!array_key_exists($type, $counts)) {
+                continue;
+            }
+
+            if ($since !== null && ($entry['created_at'] ?? '') < $since) {
+                continue;
+            }
+
+            $counts[$type]++;
+        }
+
+        return $counts;
     }
 
     /**

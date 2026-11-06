@@ -22,13 +22,7 @@ class DashboardController
     public function index(Request $request): Response
     {
         $pulse = Pulse::instance();
-
-        // Collect high-level counts for all 14 modules
-        $counts = [];
-        foreach (EntryType::all() as $type) {
-            $counts[$type] = $pulse->storage()->count($type);
-        }
-
+        $counts = $pulse->counts();
         $server = ServerPerformanceRecorder::sample();
 
         return view('pulse::dashboard', [

@@ -2,6 +2,8 @@
 
 namespace Spark\Pulse;
 
+use function in_array;
+
 /**
  * Enumeration of all supported Pulse entry types.
  *
@@ -48,5 +50,42 @@ final class EntryType
             self::VIEW,
             self::PERFORMANCE,
         ];
+    }
+
+    /**
+     * Normalize an entry type string (handling plurals or aliases).
+     *
+     * @param string $type
+     * @return string
+     */
+    public static function normalize(string $type): string
+    {
+        $type = strtolower(trim($type));
+
+        return match ($type) {
+            'requests' => self::REQUEST,
+            'commands' => self::COMMAND,
+            'jobs' => self::JOB,
+            'events' => self::EVENT,
+            'exceptions' => self::EXCEPTION,
+            'gates' => self::GATE,
+            'logs' => self::LOG,
+            'queries' => self::QUERY,
+            'views' => self::VIEW,
+            'models' => self::MODEL,
+            'http', 'http_clients', 'httpclient' => self::HTTP_CLIENT,
+            default => $type,
+        };
+    }
+
+    /**
+     * Check if the given entry type is valid.
+     *
+     * @param string $type
+     * @return bool
+     */
+    public static function isValid(string $type): bool
+    {
+        return in_array(self::normalize($type), self::all(), true);
     }
 }

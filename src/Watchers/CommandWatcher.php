@@ -4,6 +4,7 @@ namespace Spark\Pulse\Watchers;
 
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
+use Spark\Support\Str;
 use Spark\Telemetry;
 
 /**
@@ -31,11 +32,8 @@ class CommandWatcher extends Watcher
 
             // Check if command is ignored
             $ignored = (array) config('pulse.ignore_commands', ['pulse:*', 'queue:work']);
-            foreach ($ignored as $pattern) {
-                $patternRegex = '#^' . str_replace('\*', '.*', preg_quote($pattern, '#')) . '#i';
-                if (preg_match($patternRegex, $name)) {
-                    return;
-                }
+            if (Str::is($ignored, $name, true)) {
+                return;
             }
 
             $duration = (float) ($payload['duration_ms'] ?? 0.0);

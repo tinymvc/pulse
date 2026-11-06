@@ -16,9 +16,10 @@ use Spark\Pulse\Pulse as PulseCore;
  * @method static void record(\Spark\Pulse\Entry $entry)
  * @method static void flush()
  * @method static \Spark\Pulse\Contracts\StorageContract storage()
- * @method static \Spark\Pulse\Pulse filter(callable $callback)
- * @method static \Spark\Pulse\Pulse auth(callable $callback)
+ * @method static PulseCore filter(callable $callback)
+ * @method static PulseCore auth(callable $callback)
  * @method static bool check(?\Spark\Http\Request $request = null)
+ * @method static array counts(?string $since = null)
  * @method static int prune(?int $hours = null)
  * @method static void clear()
  *

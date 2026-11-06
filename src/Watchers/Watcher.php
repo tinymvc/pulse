@@ -66,6 +66,17 @@ abstract class Watcher implements WatcherContract
         $this->pulse->record($entry);
     }
 
+    /** @var array<string, bool>|null Cached sensitive keys lookup map */
+    protected static ?array $sensitiveMap = null;
+
+    /**
+     * Reset cached sensitive keys map.
+     */
+    public static function resetSensitiveMap(): void
+    {
+        static::$sensitiveMap = null;
+    }
+
     /**
      * Recursively mask sensitive keys in an array.
      *
@@ -75,13 +86,27 @@ abstract class Watcher implements WatcherContract
      */
     protected function mask(array $data, ?array $sensitiveKeys = null): array
     {
-        $sensitiveKeys ??= (array) config('pulse.sensitive_keys', [
-            'password', 'password_confirmation', 'secret', 'token', 'authorization', 'cookie', 'api_key', 'access_token'
-        ]);
+        if ($sensitiveKeys !== null) {
+            $sensitiveMap = array_fill_keys(array_map('strtolower', $sensitiveKeys), true);
+            return $this->maskRecursive($data, $sensitiveMap);
+        }
 
-        $sensitiveMap = array_fill_keys(array_map('strtolower', $sensitiveKeys), true);
+        if (static::$sensitiveMap === null) {
+            $keys = (array) config('pulse.sensitive_keys', [
+                'password',
+                'password_confirmation',
+                'secret',
+                'token',
+                'authorization',
+                'cookie',
+                'api_key',
+                'access_token',
+                'app_key'
+            ]);
+            static::$sensitiveMap = array_fill_keys(array_map('strtolower', $keys), true);
+        }
 
-        return $this->maskRecursive($data, $sensitiveMap);
+        return $this->maskRecursive($data, static::$sensitiveMap);
     }
 
     private function maskRecursive(array $data, array $sensitiveMap): array

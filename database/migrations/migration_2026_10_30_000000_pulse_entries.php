@@ -1,7 +1,7 @@
 <?php
 
 use Spark\Database\Schema\Blueprint;
-use Spark\Database\Schema\Schema;
+use Spark\Facades\Schema;
 
 return new class {
     /**
@@ -18,17 +18,7 @@ return new class {
             $table->longText('content');
             $table->text('tags')->nullable();
             $table->string('created_at', 30)->index();
-        });
-
-        Schema::create('pulse_aggregates', function (Blueprint $table) {
-            $table->id();
-            $table->string('bucket', 10)->index(); // '1m', '1h', '24h'
-            $table->string('period', 30)->index(); // date/hour period string
-            $table->string('type', 30)->index();
-            $table->string('key', 120)->index();
-            $table->float('value');
-            $table->integer('count')->default(1);
-            $table->index(['bucket', 'period', 'type']);
+            $table->index(['type', 'created_at']);
         });
     }
 
@@ -37,7 +27,6 @@ return new class {
      */
     public function down(): void
     {
-        Schema::dropIfExists('pulse_aggregates');
         Schema::dropIfExists('pulse_entries');
     }
 };

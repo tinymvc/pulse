@@ -8,6 +8,7 @@ use Spark\Pulse\Contracts\StorageContract;
 use Spark\Pulse\Storage\DatabaseStorage;
 use Spark\Pulse\Storage\MemoryStorage;
 use Spark\Support\Traits\Macroable;
+use function in_array;
 
 /**
  * Spark Pulse Core Coordinator.
@@ -211,6 +212,17 @@ class Pulse
     }
 
     /**
+     * Get aggregated counts grouped by entry type.
+     *
+     * @param string|null $since ISO timestamp
+     * @return array<string, int>
+     */
+    public function counts(?string $since = null): array
+    {
+        return $this->storage->counts($since);
+    }
+
+    /**
      * Check if the given request is authorized to view Pulse.
      *
      * @param Request|null $request
@@ -227,8 +239,8 @@ class Pulse
             return false;
         }
 
-        // Default: allow in local/testing environment, or if debug mode is true
-        $env = env('APP_ENV', 'local');
+        // Default: allow in local/testing environment, or if debug mode is active
+        $env = (string) config('app.env', env('APP_ENV', 'local'));
         return in_array($env, ['local', 'testing'], true) || is_debug_mode();
     }
 

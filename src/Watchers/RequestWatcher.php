@@ -6,6 +6,7 @@ use Spark\Http\Request;
 use Spark\Http\Response;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
+use Spark\Support\Str;
 use Spark\Telemetry;
 
 /**
@@ -40,11 +41,8 @@ class RequestWatcher extends Watcher
 
             // Check if path is ignored
             $ignored = (array) config('pulse.ignore_paths', ['pulse*']);
-            foreach ($ignored as $pattern) {
-                $patternRegex = '#^' . str_replace('\*', '.*', preg_quote(ltrim($pattern, '/'), '#')) . '#i';
-                if (preg_match($patternRegex, ltrim($uri, '/'))) {
-                    return;
-                }
+            if (Str::is($ignored, ltrim($uri, '/'), true)) {
+                return;
             }
 
             $duration = (float) ($payload['duration_ms'] ?? 0.0);

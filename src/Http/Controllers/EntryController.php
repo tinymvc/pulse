@@ -4,6 +4,7 @@ namespace Spark\Pulse\Http\Controllers;
 
 use Spark\Http\Request;
 use Spark\Http\Response;
+use Spark\Pulse\EntryType;
 use Spark\Pulse\Pulse;
 
 /**
@@ -21,24 +22,8 @@ class EntryController
      */
     public function index(Request $request): Response
     {
-        $type = (string) $request->query('type', 'request');
+        $type = EntryType::normalize((string) $request->query('type', 'request'));
 
-        // Normalize plural forms if supplied
-        $pluralMap = [
-            'requests' => 'request',
-            'commands' => 'command',
-            'jobs' => 'job',
-            'events' => 'event',
-            'exceptions' => 'exception',
-            'gates' => 'gate',
-            'logs' => 'log',
-            'queries' => 'query',
-            'views' => 'view',
-            'models' => 'model',
-        ];
-        if (isset($pluralMap[$type])) {
-            $type = $pluralMap[$type];
-        }
         $options = [
             'limit' => (int) $request->query('limit', 50),
             'before' => $request->query('before'),

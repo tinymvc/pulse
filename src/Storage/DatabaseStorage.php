@@ -132,16 +132,8 @@ class DatabaseStorage implements StorageContract
             array_pop($rows);
         }
 
-        $formatted = [];
-        foreach ($rows as $row) {
-            $row = (array) $row;
-            $row['content'] = is_string($row['content'] ?? null) ? json_decode($row['content'], true) : ($row['content'] ?? []);
-            $row['tags'] = is_string($row['tags'] ?? null) ? json_decode($row['tags'], true) : ($row['tags'] ?? []);
-            $formatted[] = $row;
-        }
-
         return [
-            'entries' => $formatted,
+            'entries' => $this->formatRows($rows),
             'total' => $total,
             'has_more' => $hasMore,
         ];
@@ -159,11 +151,7 @@ class DatabaseStorage implements StorageContract
             return null;
         }
 
-        $record = (array) $record;
-        $record['content'] = is_string($record['content'] ?? null) ? json_decode($record['content'], true) : ($record['content'] ?? []);
-        $record['tags'] = is_string($record['tags'] ?? null) ? json_decode($record['tags'], true) : ($record['tags'] ?? []);
-
-        return $record;
+        return $this->formatRow($record);
     }
 
     /**
@@ -178,16 +166,7 @@ class DatabaseStorage implements StorageContract
             ->orderBy('created_at', 'ASC')
             ->get();
 
-        $rows = is_array($records) ? $records : (method_exists($records, 'all') ? $records->all() : (array) $records);
-        $formatted = [];
-        foreach ($rows as $row) {
-            $row = (array) $row;
-            $row['content'] = is_string($row['content'] ?? null) ? json_decode($row['content'], true) : ($row['content'] ?? []);
-            $row['tags'] = is_string($row['tags'] ?? null) ? json_decode($row['tags'], true) : ($row['tags'] ?? []);
-            $formatted[] = $row;
-        }
-
-        return $formatted;
+        return $this->formatRows($records);
     }
 
     /**
@@ -206,6 +185,36 @@ class DatabaseStorage implements StorageContract
         }
 
         return (int) $builder->count();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function counts(?string $since = null): array
+    {
+        $this->ensureInstalled();
+
+        $builder = $this->query()
+            ->select(['type', DB::raw('COUNT(*) as total')])
+            ->groupBy('type');
+
+        if ($since !== null) {
+            $builder->where('created_at', '>=', $since);
+        }
+
+        $records = $builder->get();
+        $rows = is_array($records) ? $records : (method_exists($records, 'all') ? $records->all() : (array) $records);
+
+        $counts = array_fill_keys(\Spark\Pulse\EntryType::all(), 0);
+        foreach ($rows as $row) {
+            $row = (array) $row;
+            $type = (string) ($row['type'] ?? '');
+            if ($type !== '' && array_key_exists($type, $counts)) {
+                $counts[$type] = (int) ($row['total'] ?? 0);
+            }
+        }
+
+        return $counts;
     }
 
     /**
@@ -252,6 +261,7 @@ class DatabaseStorage implements StorageContract
                     $table->longText('content');
                     $table->text('tags')->nullable();
                     $table->string('created_at', 30)->index();
+                    $table->index(['type', 'created_at']);
                 });
             }
             $this->installed = true;
@@ -259,5 +269,41 @@ class DatabaseStorage implements StorageContract
             // Log and allow subsequent attempts
             tracer_log('Pulse database table creation check failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Format a single database row into a structured entry array.
+     *
+     * @param array|object $row
+     * @return array
+     */
+    protected function formatRow(array|object $row): array
+    {
+        $row = (array) $row;
+        $row['content'] = is_string($row['content'] ?? null)
+            ? (json_decode($row['content'], true) ?: [])
+            : ($row['content'] ?? []);
+        $row['tags'] = is_string($row['tags'] ?? null)
+            ? (json_decode($row['tags'], true) ?: [])
+            : ($row['tags'] ?? []);
+
+        return $row;
+    }
+
+    /**
+     * Format multiple database records.
+     *
+     * @param iterable $records
+     * @return array
+     */
+    protected function formatRows(iterable $records): array
+    {
+        $rows = is_array($records) ? $records : (method_exists($records, 'all') ? $records->all() : (array) $records);
+        $formatted = [];
+        foreach ($rows as $row) {
+            $formatted[] = $this->formatRow($row);
+        }
+
+        return $formatted;
     }
 }

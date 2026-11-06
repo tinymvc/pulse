@@ -36,8 +36,7 @@ class CheckCommand
         Prompt::newline();
         Prompt::section('Recorded Entries by Module');
 
-        foreach (EntryType::all() as $type) {
-            $count = $pulse->storage()->count($type);
+        foreach ($pulse->counts() as $type => $count) {
             Prompt::message(sprintf('  %-15s : %d entries', ucfirst($type), $count));
         }
 
