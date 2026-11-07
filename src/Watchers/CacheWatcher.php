@@ -7,10 +7,7 @@ use Spark\Pulse\EntryType;
 use Spark\Telemetry;
 use function array_slice;
 use function count;
-use function get_class;
 use function is_array;
-use function is_object;
-use function is_scalar;
 
 /**
  * Cache Watcher.
@@ -35,7 +32,7 @@ class CacheWatcher extends Watcher
                 'action' => 'hit',
                 'key' => $key,
                 'store' => $payload['store'] ?? 'default',
-                'value' => $this->previewValue($payload['value'] ?? null),
+                'value' => $this->previewValue($key, $payload['value'] ?? null),
             ])
                 ->tags(['hit', $key]);
 
@@ -61,7 +58,7 @@ class CacheWatcher extends Watcher
                 'key' => $key,
                 'store' => $payload['store'] ?? 'default',
                 'expiration' => $payload['expiration'] ?? null,
-                'value' => $this->previewValue($payload['value'] ?? null),
+                'value' => $this->previewValue($key, $payload['value'] ?? null),
             ])
                 ->tags(['written', $key]);
 
@@ -81,20 +78,11 @@ class CacheWatcher extends Watcher
         });
     }
 
-    private function previewValue(mixed $value): mixed
+    private function previewValue(string $key, mixed $value): mixed
     {
-        if (is_scalar($value) || $value === null) {
-            return $value;
+        if (is_array($value) && count($value) > 10) {
+            $value = array_slice($value, 0, 10, true) + ['...more' => count($value) - 10];
         }
-
-        if (is_array($value)) {
-            return count($value) <= 10 ? $value : array_slice($value, 0, 10) + ['...more' => count($value) - 10];
-        }
-
-        if (is_object($value)) {
-            return get_class($value);
-        }
-
-        return '[Complex Value]';
+        return $this->mask([$key => $value])[$key];
     }
 }

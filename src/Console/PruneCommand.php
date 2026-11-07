@@ -21,9 +21,10 @@ class PruneCommand
      */
     public function handle(array $args = []): int
     {
-        $hours = (int) ($args['hours'] ?? config('pulse.storage.prune_hours', 24));
-        if ($hours <= 0) {
-            $hours = 24;
+        $hours = filter_var($args['hours'] ?? config('pulse.storage.prune_hours', 24), FILTER_VALIDATE_INT);
+        if ($hours === false || $hours < 1) {
+            Prompt::message('Hours must be a positive integer.', 'danger');
+            return 1;
         }
 
         $count = Pulse::instance()->prune($hours);

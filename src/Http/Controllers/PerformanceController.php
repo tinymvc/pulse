@@ -4,7 +4,6 @@ namespace Spark\Pulse\Http\Controllers;
 
 use Spark\Http\Request;
 use Spark\Http\Response;
-use Spark\Pulse\EntryType;
 use Spark\Pulse\Pulse;
 use Spark\Pulse\Recorders\ServerPerformanceRecorder;
 

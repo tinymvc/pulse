@@ -4,12 +4,13 @@ namespace Spark\Pulse;
 
 use Spark\Console\Commands;
 use Spark\Foundation\Providers\ServiceProvider;
-use Spark\Http\Middleware;
 use Spark\Http\Routing\Router;
 use Spark\Pulse\Console\CheckCommand;
 use Spark\Pulse\Console\ClearCommand;
 use Spark\Pulse\Console\InstallCommand;
 use Spark\Pulse\Console\PruneCommand;
+use Spark\Pulse\Http\Middleware\AuthorizePulse;
+use Spark\Pulse\Http\Middleware\VerifyCsrfToken;
 use Spark\Pulse\Watchers\CacheWatcher;
 use Spark\Pulse\Watchers\CommandWatcher;
 use Spark\Pulse\Watchers\EventWatcher;
@@ -24,8 +25,8 @@ use Spark\Pulse\Watchers\PerformanceWatcher;
 use Spark\Pulse\Watchers\QueryWatcher;
 use Spark\Pulse\Watchers\RequestWatcher;
 use Spark\Pulse\Watchers\ViewWatcher;
-use Spark\View\Blade;
-use function is_string;
+use Spark\Pulse\Watchers\Watcher;
+use Spark\Telemetry;
 
 /**
  * Service Provider for Spark Pulse.
@@ -60,6 +61,15 @@ class PulseServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $defaults = require __DIR__ . '/../config/pulse.php';
+        $configured = (array) $this->app->getConfig('pulse', []);
+        $config = array_replace_recursive($defaults, $configured);
+        foreach (['middleware', 'ignore_paths', 'ignore_commands'] as $list) {
+            $config[$list] = $configured[$list] ?? $defaults[$list];
+        }
+        $config['sensitive_keys'] = array_unique([...$defaults['sensitive_keys'], ...($configured['sensitive_keys'] ?? [])]);
+        $this->app->setConfig('pulse', $config);
+        Watcher::resetSensitiveMap();
         $this->app->singleton(Pulse::class, fn() => new Pulse());
 
         $this->app->alias('pulse', Pulse::class);
@@ -70,64 +80,38 @@ class PulseServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $defaultConfig = require __DIR__ . '/../config/pulse.php';
-        $appConfig = (array) $this->app->getConfig('pulse', []);
-        $this->app->setConfig('pulse', array_replace_recursive($defaultConfig, $appConfig));
-
-        if (!config('pulse.enabled', true)) {
-            return;
-        }
-
-        $pulse = $this->app->get(Pulse::class);
-
-        // 1. Register View Namespace
-        if ($this->app->bound(Blade::class)) {
-            try {
-                $blade = $this->app->get(Blade::class);
-                $viewsPath = dir_path(__DIR__ . '/../resources/views');
-                if (is_dir($viewsPath)) {
-                    $blade->usePath($viewsPath, 'pulse');
-                }
-            } catch (\Throwable) {
-                // Ignore if views directory is not configured in current environment
-            }
-        }
-
-        // 2. Register Dashboard Routes
-        if ($this->app->bound(Router::class)) {
-            $router = $this->app->get(Router::class);
-            $path = trim((string) config('pulse.path', 'pulse'), '/');
-            $configured = (array) config('pulse.middleware', [\Spark\Pulse\Http\Middleware\AuthorizePulse::class]);
-            $middleware = [];
-            $middlewareManager = $this->app->bound(Middleware::class) ? $this->app->get(Middleware::class) : null;
-
-            foreach ($configured as $item) {
-                if (is_callable($item) || (is_string($item) && class_exists($item))) {
-                    $middleware[] = $item;
-                } elseif ($middlewareManager !== null && is_string($item) && $middlewareManager->has($item)) {
-                    $middleware[] = $item;
-                }
-            }
-
-            $router->group([
-                'prefix' => $path,
-                'middleware' => $middleware,
-            ], static function () {
-                require __DIR__ . '/../routes/web.php';
-            });
-        }
-
-        // 3. Register CLI Commands
         if ($this->app->bound(Commands::class)) {
             /** @var Commands $commands */
             $commands = $this->app->get(Commands::class);
-            $commands->addCommand('pulse:install', [InstallCommand::class, 'handle'], 'Install Spark Pulse & create database tables');
+            $commands->addCommand('pulse:install', [InstallCommand::class, 'handle'], 'Publish the Pulse configuration and migration');
             $commands->addCommand('pulse:clear', [ClearCommand::class, 'handle'], 'Clear all recorded Spark Pulse entries');
             $commands->addCommand('pulse:prune', [PruneCommand::class, 'handle'], 'Prune old Spark Pulse entries');
             $commands->addCommand('pulse:check', [CheckCommand::class, 'handle'], 'Check Spark Pulse status and active watchers');
         }
 
-        // 4. Register All 14 Watchers
+        if (!config('pulse.enabled', true)) {
+            return;
+        }
+
+        $router = $this->app->get(Router::class);
+        $router->group([
+            'path' => trim((string) config('pulse.path', 'pulse'), '/'),
+            'name' => 'pulse',
+            'middleware' => array_unique([...(array) config('pulse.middleware', []), AuthorizePulse::class, VerifyCsrfToken::class]),
+        ], static function () {
+            require __DIR__ . '/../routes/web.php';
+        });
+
+        $pulse = $this->app->get(Pulse::class);
+        Pulse::newBatchId();
+        $newBatch = static function (): void {
+            Pulse::newBatchId();
+        };
+        Telemetry::listen('command.starting', $newBatch);
+        Telemetry::listen('job.processing', $newBatch);
+        // A queue worker may stay alive indefinitely after a short job.
+        Telemetry::listen('job.processed', $pulse->flush(...), -100);
+        Telemetry::listen('job.failed', $pulse->flush(...), -100);
         foreach ($this->watchers as $watcherClass) {
             (new $watcherClass())->register($pulse);
         }

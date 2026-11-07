@@ -1,10 +1,10 @@
 {
     "name": "tinymvc/pulse",
-    "description": "Monitor Tinymvc/Spark application activity, performance, and runtime events.",
+    "description": "Monitor TinyMVC Spark application activity, performance, and runtime events.",
     "license": "MIT",
     "require": {
         "php": ">=8.2",
-        "tinymvc/tinycore": "^4.0 || dev-main"
+        "tinymvc/tinycore": "^4.2.15 || dev-main"
     },
     "autoload": {
         "psr-4": {

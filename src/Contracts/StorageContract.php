@@ -24,7 +24,7 @@ interface StorageContract
      * Retrieve entries by type with pagination and filtering options.
      *
      * @param string $type
-     * @param array $options [limit, before, search, family_hash, batch_id, slow_only]
+     * @param array $options [limit, before, before_id, search, family_hash, batch_id, slow_only]
      * @return array{entries: array, total: int, has_more: bool}
      */
     public function get(string $type, array $options = []): array;

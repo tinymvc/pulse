@@ -75,12 +75,16 @@ class DashboardRoutesTest extends TestCase
         $pulse = Pulse::instance();
         $this->assertTrue($pulse->isRecording());
 
+        $this->get('/pulse/api/performance');
+        $this->withHeaders(['X-CSRF-TOKEN' => csrf_token()]);
+
         // Toggle recording to off
         $toggleResponse = $this->post('/pulse/api/toggle');
         $toggleResponse->assertOk();
         $toggleData = $toggleResponse->json();
         $this->assertFalse($toggleData['recording']);
         $this->assertFalse($pulse->isRecording());
+        $this->assertFalse((new Pulse())->isRecording());
 
         // Toggle recording back on
         $toggleResponse2 = $this->post('/pulse/api/toggle');
@@ -101,5 +105,32 @@ class DashboardRoutesTest extends TestCase
 
         $response = $this->get('/pulse');
         $response->assertStatus(403);
+    }
+
+    public function test_web_dashboard_escapes_payloads_and_remains_quiet_on_refresh(): void
+    {
+        $pulse = Pulse::instance();
+        $entry = Entry::make('log', ['message' => '<b>test marker</b>']);
+        $pulse->record($entry);
+        $pulse->flush();
+        $this->get('/pulse?tab=log&search=marker')->assertOk()->assertSee('&lt;b&gt;test marker&lt;/b&gt;');
+        $this->get('/pulse?entry=' . $entry->id)->assertOk()->assertSee('Execution trace')->assertSee('&lt;b&gt;test marker&lt;/b&gt;');
+        $this->get('/pulse', ['X-Pulse-Refresh' => '1'])->assertOk()->assertHeader('Cache-Control', 'private, no-store');
+        $pulse->flush();
+        $this->assertSame(1, $pulse->storage()->count());
+    }
+
+    public function test_dashboard_actions_require_access_and_valid_input(): void
+    {
+        $pulse = Pulse::instance();
+        $this->app->setConfig('app.env', 'production');
+        $this->get('/pulse/api/entries')->assertStatus(403);
+        $this->post('/pulse/api/clear')->assertStatus(403);
+        $pulse->auth(fn() => true);
+        $this->get('/pulse')->assertOk();
+        $this->post('/pulse/api/clear')->assertStatus(419);
+        $this->withHeaders(['X-CSRF-TOKEN' => csrf_token()]);
+        $this->post('/pulse/api/prune', ['hours' => -1])->assertStatus(422);
+        $this->get('/pulse/api/entries?type[]=invalid')->assertStatus(422);
     }
 }

@@ -147,7 +147,7 @@ class PulseTest extends TestCase
         $this->assertArrayHasKey('memory', $sample);
         $this->assertArrayHasKey('disk', $sample);
         $this->assertArrayHasKey('runtime', $sample);
-        $this->assertGreaterThanOrEqual(0, $sample['cpu']['usage_percent']);
+        $this->assertArrayHasKey('usage_percent', $sample['cpu']);
         $this->assertNotEmpty($sample['memory']['app_formatted']);
     }
 

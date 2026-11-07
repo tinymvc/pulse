@@ -1,19 +1,17 @@
-<x-pulse::layout :server="$server" :path="$path" :active-tab="$activeTab" :counts="$counts">
-    <div class="flex-1 flex overflow-hidden">
-        {{-- Sidebar Component --}}
-        <x-pulse::sidebar :counts="$counts" :active-tab="$activeTab" />
-
-        {{-- Main Content Area --}}
-        <main class="flex-1 overflow-y-auto p-6 bg-gray-950">
-            {{-- Overview Tab: Server Performance & Module Summary --}}
-            <div x-show="activeTab === 'dashboard'">
-                <x-pulse::metrics :server="$server" :counts="$counts" />
-            </div>
-
-            {{-- Activity Tab: Filterable Entries Table --}}
-            <div x-show="activeTab !== 'dashboard'">
-                <x-pulse::table :active-tab="$activeTab" />
-            </div>
-        </main>
-    </div>
-</x-pulse::layout>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ $entry ? 'Entry details' : ($overview ? 'Overview' : ucfirst($tab)) }} · Spark Pulse</title>
+    @include('pulse::styles')
+</head>
+<body>
+    <a href="#main" class="skip">Skip to activity</a>
+    @include('pulse::workspace', compact('tab', 'overview', 'groups', 'counts', 'server', 'entry', 'trace', 'page', 'search', 'path', 'filters', 'recording'))
+    <p class="notice" id="notice" role="status" hidden></p>
+    @include('pulse::script')
+</body>
+</html>

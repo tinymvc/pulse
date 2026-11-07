@@ -4,7 +4,6 @@ namespace Spark\Pulse\Recorders;
 
 use function count;
 use function floatval;
-use function strlen;
 
 /**
  * Cross-Platform Server & Runtime Performance Recorder.
@@ -31,8 +30,8 @@ class ServerPerformanceRecorder
     /** @var float Timestamp of last CPU sample */
     private static float $cachedCpuAt = 0.0;
 
-    /** @var int|null Cached total system memory in bytes */
-    private static ?int $osTotalMemory = null;
+    /** First line of /proc/stat from the previous sample, in scheduler ticks. */
+    private static ?array $cpuTicks = null;
 
     /**
      * Clear all cached performance metrics.
@@ -43,7 +42,7 @@ class ServerPerformanceRecorder
         self::$cachedAt = 0.0;
         self::$cachedCpu = null;
         self::$cachedCpuAt = 0.0;
-        self::$osTotalMemory = null;
+        self::$cpuTicks = null;
     }
 
     /**
@@ -76,7 +75,7 @@ class ServerPerformanceRecorder
      * Sample CPU utilization percentage.
      *
      * @param bool $fresh
-     * @return array{usage_percent: float, cores: int}
+     * @return array{usage_percent: ?float, cores: ?int}
      */
     public static function sampleCpu(bool $fresh = false): array
     {
@@ -88,28 +87,20 @@ class ServerPerformanceRecorder
             ];
         }
 
-        $usage = 0.0;
-
-        if (PHP_OS_FAMILY === 'Windows') {
-            try {
-                if (function_exists('shell_exec')) {
-                    $output = @shell_exec('wmic cpu get loadpercentage 2>&1');
-                    if ($output && preg_match('/\d+/', $output, $matches)) {
-                        $usage = (float) $matches[0];
-                    }
+        $usage = null;
+        if (is_readable('/proc/stat')) {
+            $line = file_get_contents('/proc/stat', false, null, 0, 256);
+            if ($line && preg_match('/^cpu\\s+([0-9 ]+)/', $line, $matches)) {
+                // Guest ticks are already included in the user and nice counters.
+                $fields = array_map('intval', preg_split('/\\s+/', trim($matches[1])));
+                $ticks = [array_sum(array_slice($fields, 0, 8)), ($fields[3] ?? 0) + ($fields[4] ?? 0)];
+                if (self::$cpuTicks !== null && ($elapsed = $ticks[0] - self::$cpuTicks[0]) > 0) {
+                    $busy = 1 - ($ticks[1] - self::$cpuTicks[1]) / $elapsed;
+                    $usage = round(100 * max(0, min(1, $busy)), 1);
                 }
-            } catch (\Throwable) {
-                $usage = 0.0;
-            }
-        } elseif (function_exists('sys_getloadavg')) {
-            $loads = sys_getloadavg();
-            if ($loads !== false && isset($loads[0])) {
-                $cores = self::getCpuCores();
-                $usage = min(100.0, round(($loads[0] / max(1, $cores)) * 100, 1));
+                self::$cpuTicks = $ticks;
             }
         }
-
-        $usage = max(0.0, min(100.0, $usage));
         self::$cachedCpu = $usage;
         self::$cachedCpuAt = $now;
 
@@ -128,37 +119,18 @@ class ServerPerformanceRecorder
     {
         $appMemory = memory_get_usage(true);
         $peakMemory = memory_get_peak_usage(true);
-        $totalMemory = self::$osTotalMemory ?? 0;
-        $freeMemory = 0;
-
-        if ($totalMemory <= 0) {
-            if (PHP_OS_FAMILY === 'Linux' && is_readable('/proc/meminfo')) {
-                $meminfo = @file_get_contents('/proc/meminfo');
-                if ($meminfo && preg_match('/MemTotal:\s+(\d+)\s+kB/', $meminfo, $totalMatches)) {
-                    $totalMemory = (int) $totalMatches[1] * 1024;
-                }
-            } elseif (PHP_OS_FAMILY === 'Windows' && function_exists('shell_exec')) {
-                try {
-                    $output = @shell_exec('wmic OS get TotalVisibleMemorySize /Value 2>&1');
-                    if ($output && preg_match('/TotalVisibleMemorySize=(\d+)/i', $output, $m1)) {
-                        $totalMemory = (int) $m1[1] * 1024;
-                    }
-                } catch (\Throwable) {
-                    // Fallback to PHP limit
-                }
+        $totalMemory = null;
+        $freeMemory = null;
+        if (is_readable('/proc/meminfo') && ($info = file_get_contents('/proc/meminfo'))) {
+            if (preg_match('/^MemTotal:\\s+(\\d+) kB/m', $info, $total)) {
+                $totalMemory = (int) $total[1] * 1024;
             }
-
-            if ($totalMemory <= 0) {
-                $iniLimit = ini_get('memory_limit');
-                $totalMemory = self::parseBytes($iniLimit ?: '512M');
+            if (preg_match('/^MemAvailable:\\s+(\\d+) kB/m', $info, $available)) {
+                $freeMemory = (int) $available[1] * 1024;
             }
-
-            self::$osTotalMemory = $totalMemory;
         }
-
-        $freeMemory = max(0, $totalMemory - $appMemory);
-        $usedMemory = max(0, $totalMemory - $freeMemory);
-        $usagePercent = $totalMemory > 0 ? round(($usedMemory / $totalMemory) * 100, 1) : 0;
+        $usedMemory = $totalMemory !== null && $freeMemory !== null ? max(0, $totalMemory - $freeMemory) : null;
+        $usagePercent = $totalMemory && $usedMemory !== null ? round(100 * $usedMemory / $totalMemory, 1) : null;
 
         return [
             'app_bytes' => $appMemory,
@@ -166,11 +138,11 @@ class ServerPerformanceRecorder
             'app_formatted' => self::formatBytes($appMemory),
             'app_peak_formatted' => self::formatBytes($peakMemory),
             'total_bytes' => $totalMemory,
-            'total_formatted' => self::formatBytes($totalMemory),
+            'total_formatted' => $totalMemory !== null ? self::formatBytes($totalMemory) : null,
             'used_bytes' => $usedMemory,
-            'used_formatted' => self::formatBytes($usedMemory),
+            'used_formatted' => $usedMemory !== null ? self::formatBytes($usedMemory) : null,
             'free_bytes' => $freeMemory,
-            'free_formatted' => self::formatBytes($freeMemory),
+            'free_formatted' => $freeMemory !== null ? self::formatBytes($freeMemory) : null,
             'usage_percent' => $usagePercent,
         ];
     }
@@ -183,18 +155,18 @@ class ServerPerformanceRecorder
     public static function sampleDisk(): array
     {
         $path = function_exists('storage_dir') ? storage_dir() : getcwd();
-        $total = @disk_total_space($path) ?: 0;
-        $free = @disk_free_space($path) ?: 0;
-        $used = max(0, $total - $free);
-        $usagePercent = $total > 0 ? round(($used / $total) * 100, 1) : 0;
+        $total = @disk_total_space($path);
+        $free = @disk_free_space($path);
+        $used = $total !== false && $free !== false ? max(0, $total - $free) : null;
+        $usagePercent = $total > 0 && $used !== null ? round(($used / $total) * 100, 1) : null;
 
         return [
-            'total_bytes' => $total,
-            'total_formatted' => self::formatBytes($total),
-            'free_bytes' => $free,
-            'free_formatted' => self::formatBytes($free),
+            'total_bytes' => $total !== false ? $total : null,
+            'total_formatted' => $total !== false ? self::formatBytes($total) : null,
+            'free_bytes' => $free !== false ? $free : null,
+            'free_formatted' => $free !== false ? self::formatBytes($free) : null,
             'used_bytes' => $used,
-            'used_formatted' => self::formatBytes($used),
+            'used_formatted' => $used !== null ? self::formatBytes($used) : null,
             'usage_percent' => $usagePercent,
             'path' => $path,
         ];
@@ -203,7 +175,7 @@ class ServerPerformanceRecorder
     /**
      * Sample system load averages (1m, 5m, 15m).
      *
-     * @return array{1m: float, 5m: float, 15m: float}
+     * @return array{1m: ?float, 5m: ?float, 15m: ?float}
      */
     public static function sampleLoad(): array
     {
@@ -218,7 +190,7 @@ class ServerPerformanceRecorder
             }
         }
 
-        return ['1m' => 0.0, '5m' => 0.0, '15m' => 0.0];
+        return ['1m' => null, '5m' => null, '15m' => null];
     }
 
     /**
@@ -232,14 +204,14 @@ class ServerPerformanceRecorder
             'os' => PHP_OS . ' (' . PHP_OS_FAMILY . ')',
             'php_version' => PHP_VERSION,
             'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? (PHP_SAPI === 'cli' ? 'CLI (' . php_sapi_name() . ')' : 'Web Server'),
-            'spark_version' => \Spark\Foundation\Application::VERSION,
-            'app_env' => env('APP_ENV', 'local'),
+            'spark_version' => \Composer\InstalledVersions::getPrettyVersion('tinymvc/tinycore') ?: \Spark\Foundation\Application::VERSION,
+            'app_env' => config('app.env', env('APP_ENV', 'production')),
             'app_debug' => (bool) config('app.debug', false),
             'uptime_seconds' => self::getSystemUptime(),
         ];
     }
 
-    private static function getCpuCores(): int
+    private static function getCpuCores(): ?int
     {
         if (PHP_OS_FAMILY === 'Windows') {
             $cores = getenv('NUMBER_OF_PROCESSORS');
@@ -252,10 +224,10 @@ class ServerPerformanceRecorder
                 return max(1, substr_count($cpuinfo, 'processor'));
             }
         }
-        return 1;
+        return null;
     }
 
-    private static function getSystemUptime(): int
+    private static function getSystemUptime(): ?int
     {
         if (PHP_OS_FAMILY === 'Linux' && is_readable('/proc/uptime')) {
             $uptime = @file_get_contents('/proc/uptime');
@@ -263,7 +235,7 @@ class ServerPerformanceRecorder
                 return (int) floatval(explode(' ', $uptime)[0]);
             }
         }
-        return 0;
+        return null;
     }
 
     public static function formatBytes(int|float $bytes, int $precision = 1): string
@@ -280,7 +252,7 @@ class ServerPerformanceRecorder
     public static function parseBytes(string $val): int
     {
         $val = trim($val);
-        $last = strtolower($val[strlen($val) - 1]);
+        $last = strtolower(substr($val, -1));
         $val = (int) $val;
         return match ($last) {
             'g' => $val * 1024 * 1024 * 1024,

@@ -34,7 +34,7 @@ class MailWatcher extends Watcher
                 'bcc' => (array) ($payload['bcc'] ?? []),
                 'reply_to' => (array) ($payload['reply_to'] ?? []),
                 'subject' => $subject,
-                'body' => $payload['body'] ?? '',
+                'body' => config('pulse.watchers.mail.record_body', false) ? ($payload['body'] ?? '') : null,
                 'is_html' => (bool) ($payload['is_html'] ?? true),
                 'transport' => $payload['transport'] ?? 'smtp',
             ])

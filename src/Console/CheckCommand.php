@@ -35,7 +35,13 @@ class CheckCommand
         Prompt::newline();
         Prompt::section('Recorded Entries by Module');
 
-        foreach ($pulse->counts() as $type => $count) {
+        try {
+            $counts = $pulse->counts();
+        } catch (\Throwable $error) {
+            Prompt::message('Cannot read Pulse storage. Check the database connection and run php spark migrate.', 'danger');
+            return 1;
+        }
+        foreach ($counts as $type => $count) {
             Prompt::message(sprintf('  %-15s : %d entries', ucfirst($type), $count));
         }
 
@@ -43,7 +49,7 @@ class CheckCommand
         Prompt::section('Server Quick Metrics');
         $sample = ServerPerformanceRecorder::sample();
 
-        Prompt::message('  CPU Load       : ' . ($sample['cpu']['usage_percent'] ?? 0) . '% (' . ($sample['cpu']['cores'] ?? 1) . ' cores)');
+        Prompt::message('  Load (1 min)   : ' . ($sample['load']['1m'] ?? 'Unavailable'));
         Prompt::message('  App Memory     : ' . ($sample['memory']['app_formatted'] ?? 'N/A') . ' (Peak: ' . ($sample['memory']['app_peak_formatted'] ?? 'N/A') . ')');
         Prompt::message('  Disk Usage     : ' . ($sample['disk']['used_formatted'] ?? 'N/A') . ' of ' . ($sample['disk']['total_formatted'] ?? 'N/A') . ' (' . ($sample['disk']['usage_percent'] ?? 0) . '%)');
         Prompt::newline();

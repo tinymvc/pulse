@@ -2,6 +2,8 @@
 
 namespace Spark\Pulse\Watchers;
 
+use Spark\Http\Request;
+use Spark\Telemetry;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Pulse\Recorders\ServerPerformanceRecorder;
@@ -23,7 +25,16 @@ class PerformanceWatcher extends Watcher
 
     protected function boot(): void
     {
-        // Sample performance when explicitly requested or at sample rate
+        Telemetry::listen('request.handled', function (array $payload) {
+            $rate = (int) config('pulse.watchers.performance.sample_rate', 1);
+            $request = $payload['request'] ?? null;
+            if (!$request instanceof Request || $rate <= 0 || !$this->pulse->isRecording() || $this->pulse->ignoresRequest($request)) {
+                return;
+            }
+            if (random_int(1, 100) <= $rate) {
+                $this->captureSnapshot();
+            }
+        });
     }
 
     /**

@@ -18,12 +18,19 @@ class ConsoleCommandsTest extends TestCase
         $console = App::get(Console::class);
 
         ob_start();
-        $console->executeCommand('pulse:install', []);
+        $console->executeCommand('pulse:install', ['views' => true]);
         $output = ob_get_clean();
 
         $this->assertStringContainsString('Installing Spark Pulse', $output);
         $this->assertStringContainsString('successfully installed', $output);
         $this->assertFileExists($this->storagePath . '/config/pulse.php');
+        $this->assertFileExists(views_dir('vendor/pulse/components/detail.blade.php'));
+        $view = views_dir('vendor/pulse/dashboard.blade.php');
+        file_put_contents($view, 'Published dashboard');
+        ob_start();
+        $console->executeCommand('pulse:install', ['views' => true]);
+        ob_end_clean();
+        $this->get('/pulse')->assertSee('Published dashboard');
     }
 
     public function test_pulse_check_command_outputs_diagnostics(): void

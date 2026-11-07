@@ -27,9 +27,6 @@ return [
     ],
 
     'ignore_paths' => [
-        'pulse*',
-        'pulse/*',
-        'api/pulse*',
         'favicon.ico',
     ],
 
@@ -48,8 +45,15 @@ return [
         'api_key',
         'access_token',
         'app_key',
+        'set-cookie',
+        'x-api-key',
+        'proxy-authorization',
+        'x-csrf-token',
+        'x-xsrf-token',
+        '_token',
+        'refresh_token',
+        'client_secret',
     ],
-
 
     'watchers' => [
         'requests' => [
@@ -84,6 +88,7 @@ return [
         ],
         'mail' => [
             'enabled' => true,
+            'record_body' => false,
         ],
         'models' => [
             'enabled' => true,
@@ -91,13 +96,14 @@ return [
         'queries' => [
             'enabled' => true,
             'detect_duplicates' => true,
+            'record_bindings' => false,
         ],
         'views' => [
             'enabled' => true,
         ],
         'performance' => [
             'enabled' => true,
-            'sample_rate' => 100,
+            'sample_rate' => 1,
         ],
     ],
 

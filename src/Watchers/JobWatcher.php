@@ -37,7 +37,7 @@ class JobWatcher extends Watcher
                 'status' => 'queued',
                 'name' => $jobName,
                 'queue' => $queue,
-                'payload' => $job instanceof JobContract ? $job->getPayload() : [],
+                'payload' => $job instanceof JobContract ? $job->getParameters() : [],
             ])
                 ->tags([$jobName, $queue, 'queued']);
 

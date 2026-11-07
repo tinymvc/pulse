@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 class WatchersAllModulesTest extends TestCase
 {
-    public function test_all_14_modules_are_recorded_correctly(): void
+    public function test_watcher_entries_and_query_duplicates_are_recorded(): void
     {
         $pulse = Pulse::instance();
 
@@ -22,17 +22,13 @@ class WatchersAllModulesTest extends TestCase
         ]);
 
         // 2. Jobs
+        $job = new \Spark\Queue\Job('processOrder', ['order_id' => 101, 'token' => 'private-job-token']);
         Telemetry::emit('job.pushed', [
-            'job' => new class {
-                public function getDisplayName() { return 'App\Jobs\ProcessOrder'; }
-                public function getPayload() { return ['order_id' => 101]; }
-            },
+            'job' => $job,
             'queue' => 'orders',
         ]);
         Telemetry::emit('job.processed', [
-            'job' => new class {
-                public function getDisplayName() { return 'App\Jobs\ProcessOrder'; }
-            },
+            'job' => $job,
             'queue' => 'orders',
             'duration_ms' => 350.0,
         ]);
@@ -118,7 +114,9 @@ class WatchersAllModulesTest extends TestCase
 
         // Assert all modules recorded records
         $this->assertSame(1, $pulse->storage()->count(EntryType::COMMAND));
-        $this->assertSame(2, $pulse->storage()->count(EntryType::JOB));
+        $jobs = $pulse->storage()->get(EntryType::JOB)['entries'];
+        $this->assertCount(2, $jobs);
+        $this->assertSame('********', $jobs[1]['content']['payload']['token']);
         $this->assertSame(1, $pulse->storage()->count(EntryType::CACHE));
         $this->assertSame(1, $pulse->storage()->count(EntryType::EVENT));
         $this->assertSame(1, $pulse->storage()->count(EntryType::EXCEPTION));

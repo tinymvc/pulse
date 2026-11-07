@@ -51,7 +51,7 @@ class EventWatcher extends Watcher
 
             $entry = Entry::make(EntryType::EVENT, [
                 'name' => $eventName,
-                'payload' => $this->mask($this->formatPayload($payload)),
+                'payload' => $this->formatPayload($payload),
             ])
                 ->tags([$eventName]);
 

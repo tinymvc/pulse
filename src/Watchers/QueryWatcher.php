@@ -20,6 +20,8 @@ class QueryWatcher extends Watcher
     /** @var array<string, int> Track queries within active batch to detect duplicates */
     private static array $seenQueries = [];
 
+    private static ?string $batch = null;
+
     public function __construct()
     {
         parent::__construct('queries');
@@ -27,21 +29,28 @@ class QueryWatcher extends Watcher
 
     protected function boot(): void
     {
-        Telemetry::listen('db.queryExecuted', function (array $payload) {
-            $sql = (string) ($payload['query'] ?? '');
-            if ($sql === '') {
-                return;
+        Telemetry::listen('db.queryExecuted', function (
+            string|array $sql,
+            float $time = 0,
+            array|int $bindings = [],
+            int|string $memory = 0,
+            string $connection = 'default'
+        ) {
+            // Direct DB calls omit bindings; the query builder includes them.
+            if (is_array($sql)) {
+                $bindings = $sql['bindings'] ?? [];
+                $time = (float) ($sql['time'] ?? 0);
+                $connection = $sql['connection'] ?? 'default';
+                $sql = (string) ($sql['query'] ?? '');
+            } elseif (is_int($bindings)) {
+                $connection = is_string($memory) ? $memory : 'default';
+                $bindings = [];
             }
 
-            // Exclude internal Pulse table queries from being recursively logged
-            $pulseTable = (string) config('pulse.storage.table', 'pulse_entries');
-            if (str_contains($sql, $pulseTable)) {
+            $table = (string) config('pulse.storage.table', 'pulse_entries');
+            if ($sql === '' || str_contains($sql, $table) || !$this->pulse->shouldRecord()) {
                 return;
             }
-
-            $time = (float) ($payload['time'] ?? 0.0);
-            $bindings = (array) ($payload['bindings'] ?? []);
-            $connection = (string) ($payload['connection'] ?? 'default');
 
             // Format family hash by normalizing numeric/quoted literals in SQL
             $normalizedSql = preg_replace('/[0-9]+|\'[^\']*\'/', '?', $sql);
@@ -49,9 +58,16 @@ class QueryWatcher extends Watcher
 
             // Duplicate detection within current request trace
             $batchId = \Spark\Pulse\Pulse::getBatchId();
-            $duplicateKey = "$batchId:$sql";
-            self::$seenQueries[$duplicateKey] = (self::$seenQueries[$duplicateKey] ?? 0) + 1;
-            $isDuplicate = self::$seenQueries[$duplicateKey] > 1;
+            if ($batchId !== self::$batch) {
+                self::$batch = $batchId;
+                self::resetDuplicates();
+            }
+            $duplicateCount = 1;
+            if (config('pulse.watchers.queries.detect_duplicates', true)) {
+                $key = md5($connection . ':' . $sql);
+                $duplicateCount = self::$seenQueries[$key] = (self::$seenQueries[$key] ?? 0) + 1;
+            }
+            $isDuplicate = $duplicateCount > 1;
 
             $slowThreshold = (float) config('pulse.slow_thresholds.query', 50);
             $isSlow = $time >= $slowThreshold;
@@ -66,11 +82,11 @@ class QueryWatcher extends Watcher
 
             $entry = Entry::make(EntryType::QUERY, [
                 'sql' => $sql,
-                'bindings' => $this->mask($bindings),
+                'bindings' => config('pulse.watchers.queries.record_bindings', false) ? $bindings : [],
                 'duration_ms' => $time,
                 'connection' => $connection,
                 'is_duplicate' => $isDuplicate,
-                'duplicate_count' => self::$seenQueries[$duplicateKey],
+                'duplicate_count' => $duplicateCount,
             ])
                 ->duration($time)
                 ->familyHash($familyHash)

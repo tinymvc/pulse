@@ -2,9 +2,8 @@
 
 namespace Spark\Pulse\Storage;
 
-use Spark\Database\Schema\Blueprint;
+use Spark\Database\QueryBuilder;
 use Spark\Facades\DB;
-use Spark\Facades\Schema;
 use Spark\Pulse\Contracts\StorageContract;
 use Spark\Pulse\Entry;
 use function count;
@@ -15,7 +14,7 @@ use function is_string;
  * Database Storage Driver for Spark Pulse.
  *
  * Persists entries into a database table with batch ingestion support,
- * fast indexed lookups, and auto-creation.
+ * indexed lookups and cursor-based paging.
  *
  * @package Spark\Pulse\Storage
  * @author Shahin Moyshan <shahin.moyshan2@gmail.com>
@@ -27,6 +26,8 @@ class DatabaseStorage implements StorageContract
 
     /** @var string|null Specific database connection */
     private ?string $connection;
+
+    private ?\Spark\Database\DB $database = null;
 
     /**
      * DatabaseStorage constructor.
@@ -40,9 +41,10 @@ class DatabaseStorage implements StorageContract
     /**
      * Get a query builder instance for the entries table.
      */
-    protected function query(): \Spark\Database\QueryBuilder
+    protected function query(): QueryBuilder
     {
-        return DB::table($this->table);
+        $this->database ??= DB::connection($this->connection);
+        return $this->database->table($this->table);
     }
 
     /**
@@ -67,8 +69,8 @@ class DatabaseStorage implements StorageContract
                 'type' => $entry->type,
                 'family_hash' => $entry->familyHash,
                 'duration' => $entry->duration,
-                'content' => json_encode($entry->content, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-                'tags' => !empty($entry->tags) ? json_encode($entry->tags) : null,
+                'content' => json_encode($entry->content, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+                'tags' => !empty($entry->tags) ? json_encode($entry->tags, JSON_INVALID_UTF8_SUBSTITUTE) : null,
                 'created_at' => $entry->createdAt,
             ];
         }
@@ -93,7 +95,16 @@ class DatabaseStorage implements StorageContract
         $builder = $this->query()->where('type', $type);
 
         if (!empty($options['before'])) {
-            $builder->where('created_at', '<', $options['before']);
+            if (!empty($options['before_id'])) {
+                $builder->where(function ($cursor) use ($options) {
+                    $cursor->where('created_at', '<', $options['before'])
+                        ->orWhere(function ($tie) use ($options) {
+                            $tie->where('created_at', '=', $options['before'])->where('id', '<', $options['before_id']);
+                        });
+                });
+            } else {
+                $builder->where('created_at', '<', $options['before']);
+            }
         }
 
         if (!empty($options['batch_id'])) {
@@ -104,18 +115,20 @@ class DatabaseStorage implements StorageContract
             $builder->where('family_hash', $options['family_hash']);
         }
 
-        if (!empty($options['search'])) {
-            $builder->where('content', 'LIKE', '%' . $options['search'] . '%');
+        if (($options['search'] ?? '') !== '') {
+            $term = strtr($options['search'], ['!' => '!!', '%' => '!%', '_' => '!_']);
+            $builder->whereRaw("LOWER(content) LIKE LOWER(:pulse_search) ESCAPE '!'", ['pulse_search' => "%$term%"]);
         }
 
         if (!empty($options['slow_only'])) {
-            $threshold = (float) ($options['slow_threshold'] ?? 500);
+            $threshold = (float) ($options['slow_threshold'] ?? config("pulse.slow_thresholds.$type", 500));
             $builder->where('duration', '>=', $threshold);
         }
 
         $total = (clone $builder)->count();
 
         $rows = $builder->orderBy('created_at', 'DESC')
+            ->orderBy('id', 'DESC')
             ->limit($limit + 1)
             ->all();
 
@@ -152,6 +165,7 @@ class DatabaseStorage implements StorageContract
         $records = $this->query()
             ->where('batch_id', $batchId)
             ->orderBy('created_at', 'ASC')
+            ->orderBy('id', 'ASC')
             ->all();
 
         return $this->formatRows($records);
@@ -204,7 +218,7 @@ class DatabaseStorage implements StorageContract
      */
     public function prune(int $hours): int
     {
-        $cutoff = gmdate('Y-m-d\TH:i:s.v\Z', time() - ($hours * 3600));
+        $cutoff = gmdate('Y-m-d\TH:i:s.000000\Z', time() - ($hours * 3600));
 
         return (int) $this->query()
             ->where('created_at', '<', $cutoff)

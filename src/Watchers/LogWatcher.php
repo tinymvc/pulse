@@ -26,6 +26,11 @@ class LogWatcher extends Watcher
     {
         Telemetry::listen('log.logged', function (array $payload) {
             $level = strtolower((string) ($payload['level'] ?? 'info'));
+            $levels = ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency'];
+            $minimum = config('pulse.watchers.logs.level', 'debug');
+            if ((int) array_search($level, $levels, true) < (int) array_search($minimum, $levels, true)) {
+                return;
+            }
             $message = (string) ($payload['message'] ?? '');
             $context = (array) ($payload['context'] ?? []);
 
@@ -37,7 +42,7 @@ class LogWatcher extends Watcher
             $entry = Entry::make(EntryType::LOG, [
                 'level' => $level,
                 'message' => $message,
-                'context' => $this->mask($context),
+                'context' => $context,
             ])
                 ->tags($tags);
 

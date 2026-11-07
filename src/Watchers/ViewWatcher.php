@@ -23,22 +23,23 @@ class ViewWatcher extends Watcher
 
     protected function boot(): void
     {
-        Telemetry::listen('bladeTemplateRendered', function (array $payload) {
-            $path = (string) ($payload['path'] ?? '');
-
-            // Don't record internal pulse dashboard view renderings to avoid noise
-            if (str_contains($path, 'pulse') || str_contains($path, 'Spark_Pulse')) {
+        Telemetry::listen('bladeTemplateRendered', function (string|array $path, float $time = 0, int $memory = 0, array $keys = []) {
+            if (is_array($path)) {
+                $time = (float) ($path['time'] ?? 0);
+                $keys = $path['data_keys'] ?? [];
+                $template = $path['template'] ?? null;
+                $path = (string) ($path['path'] ?? '');
+            }
+            $template ??= preg_replace('/_[a-f0-9]{32}\\.php$/', '', basename($path));
+            if (!$this->pulse->shouldRecord()) {
                 return;
             }
-
-            $time = (float) ($payload['time'] ?? 0.0);
-            $template = $payload['template'] ?? basename($path, '.blade.php');
 
             $entry = Entry::make(EntryType::VIEW, [
                 'template' => $template,
                 'path' => $path,
                 'duration_ms' => $time,
-                'data_keys' => (array) ($payload['data_keys'] ?? []),
+                'data_keys' => $keys,
             ])
                 ->duration($time)
                 ->tags([(string) $template]);

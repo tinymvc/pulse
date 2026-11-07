@@ -45,7 +45,8 @@ class MemoryStorage implements StorageContract
                 return false;
             }
 
-            if (!empty($options['before']) && $entry['created_at'] >= $options['before']) {
+            if (!empty($options['before']) && ($entry['created_at'] > $options['before']
+                || ($entry['created_at'] === $options['before'] && (empty($options['before_id']) || strcmp($entry['id'], $options['before_id']) >= 0)))) {
                 return false;
             }
 
@@ -58,15 +59,15 @@ class MemoryStorage implements StorageContract
             }
 
             if (!empty($options['slow_only'])) {
-                $threshold = (float) ($options['slow_threshold'] ?? 500);
+                $threshold = (float) ($options['slow_threshold'] ?? config("pulse.slow_thresholds.$type", 500));
                 if (($entry['duration'] ?? 0) < $threshold) {
                     return false;
                 }
             }
 
-            if (!empty($options['search'])) {
-                $contentStr = json_encode($entry['content']);
-                if (!str_contains($contentStr, $options['search'])) {
+            if (($options['search'] ?? '') !== '') {
+                $contentStr = json_encode($entry['content'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+                if (stripos($contentStr, $options['search']) === false) {
                     return false;
                 }
             }
@@ -75,7 +76,7 @@ class MemoryStorage implements StorageContract
         });
 
         // Sort descending by created_at
-        usort($filtered, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
+        usort($filtered, fn($a, $b) => strcmp($b['created_at'], $a['created_at']) ?: strcmp($b['id'], $a['id']));
 
         $total = count($filtered);
         $limit = max(1, min((int) ($options['limit'] ?? 50), 200));
@@ -102,7 +103,7 @@ class MemoryStorage implements StorageContract
     public function getByBatch(string $batchId): array
     {
         $matches = array_filter($this->entries, fn($e) => ($e['batch_id'] ?? null) === $batchId);
-        usort($matches, fn($a, $b) => strcmp($a['created_at'], $b['created_at']));
+        usort($matches, fn($a, $b) => strcmp($a['created_at'], $b['created_at']) ?: strcmp($a['id'], $b['id']));
 
         return array_values($matches);
     }
@@ -157,7 +158,7 @@ class MemoryStorage implements StorageContract
      */
     public function prune(int $hours): int
     {
-        $cutoff = gmdate('Y-m-d\TH:i:s.v\Z', time() - ($hours * 3600));
+        $cutoff = gmdate('Y-m-d\TH:i:s.000000\Z', time() - ($hours * 3600));
         $beforeCount = count($this->entries);
 
         $this->entries = array_filter($this->entries, fn($e) => $e['created_at'] >= $cutoff);

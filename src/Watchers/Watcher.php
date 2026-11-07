@@ -64,7 +64,10 @@ abstract class Watcher implements WatcherContract
      */
     protected function record(Entry $entry): void
     {
-        $this->pulse->record($entry);
+        if ($this->pulse->shouldRecord()) {
+            $entry->content = $this->mask($entry->content);
+            $this->pulse->record($entry);
+        }
     }
 
     /** @var array<string, bool>|null Cached sensitive keys lookup map */
@@ -87,9 +90,10 @@ abstract class Watcher implements WatcherContract
      */
     protected function mask(array $data, ?array $sensitiveKeys = null): array
     {
+        $remaining = 1024;
         if ($sensitiveKeys !== null) {
-            $sensitiveMap = array_fill_keys(array_map('strtolower', $sensitiveKeys), true);
-            return $this->maskRecursive($data, $sensitiveMap);
+            $sensitiveMap = array_fill_keys(array_map($this->normalizeKey(...), $sensitiveKeys), true);
+            return $this->maskRecursive($data, $sensitiveMap, $remaining);
         }
 
         if (static::$sensitiveMap === null) {
@@ -104,22 +108,58 @@ abstract class Watcher implements WatcherContract
                 'access_token',
                 'app_key'
             ]);
-            static::$sensitiveMap = array_fill_keys(array_map('strtolower', $keys), true);
+            static::$sensitiveMap = array_fill_keys(array_map($this->normalizeKey(...), $keys), true);
         }
 
-        return $this->maskRecursive($data, static::$sensitiveMap);
+        return $this->maskRecursive($data, static::$sensitiveMap, $remaining);
     }
 
-    private function maskRecursive(array $data, array $sensitiveMap): array
+    private function normalizeKey(string $key): string
     {
-        foreach ($data as $key => $value) {
-            $keyLower = strtolower((string) $key);
-            if (isset($sensitiveMap[$keyLower])) {
-                $data[$key] = '********';
-            } elseif (is_array($value)) {
-                $data[$key] = $this->maskRecursive($value, $sensitiveMap);
+        return str_replace('-', '_', strtolower(ltrim($key, '-:')));
+    }
+
+    /** Normalize wire-format header lines before applying the same key rules. */
+    protected function headers(array $headers): array
+    {
+        $result = [];
+        foreach ($headers as $key => $value) {
+            if (is_int($key) && is_string($value) && str_contains($value, ':')) {
+                [$key, $value] = explode(':', $value, 2);
+                $value = trim($value);
             }
+            $result[$key] = $value;
         }
-        return $data;
+        return $result;
+    }
+
+    private function maskRecursive(array $data, array $sensitiveMap, int &$remaining, int $depth = 0): array
+    {
+        if ($depth >= 12) {
+            return ['…'];
+        }
+        $preview = [];
+        foreach ($data as $key => $value) {
+            if ($remaining-- <= 0) {
+                $preview['…'] = '[truncated]';
+                break;
+            }
+            if (isset($sensitiveMap[$this->normalizeKey((string) $key)])) {
+                $value = '********';
+            } elseif (is_array($value)) {
+                $value = $this->maskRecursive($value, $sensitiveMap, $remaining, $depth + 1);
+            } elseif (is_object($value) || is_resource($value)) {
+                $value = get_debug_type($value);
+            } elseif (is_string($value)) {
+                if (strlen($value) > 8192) {
+                    $value = substr($value, 0, 8192) . '…';
+                }
+                if (!preg_match('//u', $value)) {
+                    $value = '[binary data]';
+                }
+            }
+            $preview[$key] = $value;
+        }
+        return $preview;
     }
 }

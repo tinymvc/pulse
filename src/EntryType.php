@@ -35,20 +35,36 @@ final class EntryType
     public static function all(): array
     {
         return [
-            self::REQUEST,
-            self::COMMAND,
-            self::JOB,
-            self::CACHE,
-            self::EVENT,
-            self::EXCEPTION,
-            self::GATE,
-            self::HTTP_CLIENT,
-            self::LOG,
-            self::MAIL,
-            self::MODEL,
-            self::QUERY,
-            self::VIEW,
-            self::PERFORMANCE,
+            self::REQUEST, self::COMMAND, self::JOB, self::CACHE, self::EVENT,
+            self::EXCEPTION, self::GATE, self::HTTP_CLIENT, self::LOG, self::MAIL,
+            self::MODEL, self::QUERY, self::VIEW, self::PERFORMANCE,
+        ];
+    }
+
+    /** Dashboard navigation, keyed by the persisted entry type. */
+    public static function groups(): array
+    {
+        return [
+            'Application' => [
+                self::REQUEST => 'Requests',
+                self::QUERY => 'Queries',
+                self::EXCEPTION => 'Exceptions',
+                self::LOG => 'Logs',
+                self::VIEW => 'Views',
+                self::MODEL => 'Models',
+            ],
+            'Execution' => [
+                self::JOB => 'Jobs',
+                self::COMMAND => 'Commands',
+                self::EVENT => 'Events',
+                self::GATE => 'Gates',
+            ],
+            'Services' => [
+                self::CACHE => 'Cache',
+                self::HTTP_CLIENT => 'HTTP client',
+                self::MAIL => 'Mail',
+                self::PERFORMANCE => 'Performance',
+            ],
         ];
     }
 

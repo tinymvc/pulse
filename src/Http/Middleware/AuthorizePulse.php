@@ -28,10 +28,15 @@ class AuthorizePulse implements MiddlewareInterface
      */
     public function handle(Request $request, Closure $next): mixed
     {
+        $domain = config('pulse.domain');
+        if ($domain && strcasecmp((string) parse_url($request->getRootUrl(), PHP_URL_HOST), $domain) !== 0) {
+            return Response::error(Response::STATUS_NOT_FOUND);
+        }
+
         if (!Pulse::instance()->check($request)) {
             return Response::error(Response::STATUS_FORBIDDEN, 'Forbidden: You are not authorized to access Spark Pulse.');
         }
 
-        return $next($request);
+        return $next($request)->setHeader('Cache-Control', 'private, no-store');
     }
 }

@@ -22,16 +22,27 @@ class EntryController
      */
     public function index(Request $request): Response
     {
-        $type = EntryType::normalize((string) $request->query('type', 'request'));
+        $type = $request->query('type', 'request');
+        if (!is_string($type) || !EntryType::isValid($type)) {
+            return json(['error' => 'Unknown entry type.'], Response::STATUS_UNPROCESSABLE_ENTITY);
+        }
+        $type = EntryType::normalize($type);
 
         $options = [
             'limit' => (int) $request->query('limit', 50),
             'before' => $request->query('before'),
+            'before_id' => $request->query('before_id'),
             'search' => $request->query('search'),
             'family_hash' => $request->query('family_hash'),
             'batch_id' => $request->query('batch_id'),
-            'slow_only' => (bool) $request->query('slow_only', false),
+            'slow_only' => filter_var($request->query('slow_only'), FILTER_VALIDATE_BOOLEAN),
         ];
+
+        foreach (['before', 'before_id', 'search', 'family_hash', 'batch_id'] as $key) {
+            if (isset($options[$key]) && !is_string($options[$key])) {
+                return json(['error' => "Invalid $key filter."], Response::STATUS_UNPROCESSABLE_ENTITY);
+            }
+        }
 
         $data = Pulse::instance()->storage()->get($type, $options);
 
@@ -45,7 +56,7 @@ class EntryController
     {
         $entry = Pulse::instance()->storage()->find($id);
         if (!$entry) {
-            return json(['error' => 'Entry not found'], 404);
+            return json(['error' => 'Entry not found'], Response::STATUS_NOT_FOUND);
         }
 
         return json($entry);

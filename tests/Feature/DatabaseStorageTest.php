@@ -10,8 +10,14 @@ use Tests\TestCase;
 
 class DatabaseStorageTest extends TestCase
 {
-    public function test_ensure_installed_creates_table_and_stores_entries(): void
+    private function migration(): object
     {
+        return require dirname(__DIR__, 2) . '/database/migrations/migration_2026_10_30_000000_pulse_entries.php';
+    }
+
+    public function test_migrated_table_stores_entries(): void
+    {
+        $this->migration()->up();
         $storage = new DatabaseStorage();
 
         $this->assertTrue(Schema::hasTable('pulse_entries'));
@@ -68,6 +74,7 @@ class DatabaseStorageTest extends TestCase
 
     public function test_prune_removes_expired_records(): void
     {
+        $this->migration()->up();
         $storage = new DatabaseStorage();
 
         $oldEntry = Entry::make(EntryType::LOG, ['message' => 'old log']);
@@ -85,5 +92,39 @@ class DatabaseStorageTest extends TestCase
 
         $remaining = $storage->get(EntryType::LOG);
         $this->assertSame('recent log', $remaining['entries'][0]['content']['message']);
+    }
+
+    public function test_named_storage_uses_its_own_migrated_table(): void
+    {
+        $this->app->setConfig('database.connections.telemetry', ['driver' => 'sqlite', 'file' => $this->storagePath . '/pulse.sqlite']);
+        $this->app->setConfig('pulse.storage.connection', 'telemetry');
+        $this->app->setConfig('pulse.storage.table', 'observations');
+        $this->migration()->up();
+        $this->assertFalse(Schema::hasTable('observations'));
+        $storage = new DatabaseStorage();
+        $storage->store(Entry::make('log'));
+        $this->assertSame(1, $storage->count());
+        $this->migration()->down();
+        $this->assertFalse(Schema::hasTable('observations'));
+        $this->assertThrows(\PDOException::class, fn() => $storage->count());
+    }
+
+    public function test_cursor_and_literal_search_match_in_both_drivers(): void
+    {
+        $this->migration()->up();
+        $one = Entry::make('log', ['message' => 'Usage: 40%_ok']);
+        $two = Entry::make('log', ['message' => 'Usage: 40%_ok']);
+        $two->createdAt = $one->createdAt;
+        foreach ([new DatabaseStorage(), new \Spark\Pulse\Storage\MemoryStorage()] as $storage) {
+            $storage->store([$one, $two, Entry::make('log', ['message' => 'other'])]);
+            $options = ['search' => '%_OK', 'limit' => 1];
+            $first = $storage->get('log', $options);
+            $this->assertSame(2, $first['total']);
+            $row = $first['entries'][0];
+            $second = $storage->get('log', $options + ['before' => $row['created_at'], 'before_id' => $row['id']]);
+            $this->assertCount(1, $second['entries']);
+            $this->assertFalse($second['has_more']);
+            $this->assertFalse($row['id'] === $second['entries'][0]['id']);
+        }
     }
 }

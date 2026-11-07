@@ -2,12 +2,16 @@
 
 namespace Spark\Pulse;
 
+use RuntimeException;
 use Spark\Foundation\Application;
 use Spark\Http\Request;
 use Spark\Pulse\Contracts\StorageContract;
 use Spark\Pulse\Storage\DatabaseStorage;
 use Spark\Pulse\Storage\MemoryStorage;
+use Spark\Support\Str;
 use Spark\Support\Traits\Macroable;
+use Spark\Utils\File;
+use WeakReference;
 use function count;
 use function in_array;
 
@@ -30,11 +34,17 @@ class Pulse
     /** @var string Current execution trace ID */
     protected static ?string $batchId = null;
 
-    /** @var bool Whether Pulse is actively recording */
+    private static ?WeakReference $batchRequest = null;
+
+    /** @var bool Whether this process is allowed to record */
     protected bool $recording = true;
 
     /** @var Entry[] Ingestion buffer waiting to be flushed */
     protected array $entries = [];
+
+    private bool $flushScheduled = false;
+
+    private string $pauseFile;
 
     /** @var StorageContract Storage driver */
     protected StorageContract $storage;
@@ -53,17 +63,12 @@ class Pulse
         self::$instance = $this;
         $this->recording = (bool) config('pulse.enabled', true);
 
+        $this->pauseFile = storage_dir('framework/pulse/paused');
         $driver = config('pulse.storage.driver', 'database');
         $this->storage = $storage ?? match ($driver) {
             'memory' => new MemoryStorage(),
             default => new DatabaseStorage(),
         };
-
-        // Ensure deferred flush runs on application termination
-        $app = Application::$app;
-        if ($app !== null) {
-            $app->defer($this->flush(...));
-        }
     }
 
     /**
@@ -91,6 +96,15 @@ class Pulse
      */
     public static function getBatchId(): string
     {
+        $app = Application::$app;
+        if ($app?->isHandlingRequest()) {
+            $request = $app->get(Request::class);
+            if (self::$batchRequest?->get() !== $request) {
+                self::$batchRequest = WeakReference::create($request);
+                self::newBatchId();
+            }
+        }
+
         if (self::$batchId === null) {
             self::$batchId = bin2hex(random_bytes(16));
         }
@@ -115,7 +129,48 @@ class Pulse
      */
     public function isRecording(): bool
     {
-        return $this->recording;
+        clearstatcache(true, $this->pauseFile);
+        return $this->recording && !is_file($this->pauseFile);
+    }
+
+    /** Persist the dashboard switch across processes sharing application storage. */
+    public function toggleRecording(): bool
+    {
+        $directory = dirname($this->pauseFile);
+        if (!File::ensureDirectoryExists($directory) || !($lock = fopen("$directory/recording.lock", 'c'))) {
+            throw new RuntimeException('Pulse recording state is not writable.');
+        }
+        try {
+            if (!flock($lock, LOCK_EX)) {
+                throw new RuntimeException('Could not lock Pulse recording state.');
+            }
+            clearstatcache(true, $this->pauseFile);
+            $resume = is_file($this->pauseFile);
+            if (!($resume ? unlink($this->pauseFile) : touch($this->pauseFile))) {
+                throw new RuntimeException('Could not change Pulse recording state.');
+            }
+            return $this->isRecording();
+        } finally {
+            fclose($lock);
+        }
+    }
+
+    public function shouldRecord(): bool
+    {
+        $app = Application::$app;
+        return $this->isRecording()
+            && (!$app?->isHandlingRequest() || !$this->ignoresRequest($app->get(Request::class)));
+    }
+
+    public function ignoresRequest(Request $request): bool
+    {
+        $path = trim($request->getPath(), '/');
+        $dashboard = trim((string) config('pulse.path', 'pulse'), '/');
+
+        return $path === $dashboard
+            || ($dashboard !== '' && str_starts_with($path, $dashboard . '/'))
+            || ($dashboard === '' && str_starts_with($path, 'api/'))
+            || Str::is((array) config('pulse.ignore_paths', []), $path, true);
     }
 
     /**
@@ -142,7 +197,7 @@ class Pulse
      */
     public function record(Entry $entry): void
     {
-        if (!$this->recording) {
+        if (!$this->shouldRecord()) {
             return;
         }
 
@@ -153,6 +208,13 @@ class Pulse
             }
         }
 
+        if (!$this->entries && !$this->flushScheduled && ($app = Application::$app) !== null) {
+            $this->flushScheduled = true;
+            $app->defer(function () {
+                $this->flushScheduled = false;
+                $this->flush();
+            });
+        }
         $this->entries[] = $entry;
 
         // If running in CLI and buffer gets large, flush early
@@ -240,9 +302,8 @@ class Pulse
             return false;
         }
 
-        // Default: allow in local/testing environment, or if debug mode is active
-        $env = (string) config('app.env', env('APP_ENV', 'local'));
-        return in_array($env, ['local', 'testing'], true) || is_debug_mode();
+        $env = (string) config('app.env', env('APP_ENV', 'production'));
+        return in_array($env, ['local', 'testing'], true);
     }
 
     /**
@@ -254,6 +315,9 @@ class Pulse
     public function prune(?int $hours = null): int
     {
         $hours ??= (int) config('pulse.storage.prune_hours', 24);
+        if ($hours < 1) {
+            throw new \InvalidArgumentException('Prune hours must be a positive integer.');
+        }
         return $this->storage->prune($hours);
     }
 

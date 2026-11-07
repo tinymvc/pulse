@@ -6,7 +6,6 @@ use Spark\Http\Request;
 use Spark\Http\Response;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
-use Spark\Support\Str;
 use Spark\Telemetry;
 
 /**
@@ -37,23 +36,23 @@ class RequestWatcher extends Watcher
                 return;
             }
 
-            $uri = $request->getUri();
-
-            // Check if path is ignored
-            $ignored = (array) config('pulse.ignore_paths', ['pulse*']);
-            if (Str::is($ignored, ltrim($uri, '/'), true)) {
+            if ($this->pulse->ignoresRequest($request)) {
                 return;
             }
 
             $duration = (float) ($payload['duration_ms'] ?? 0.0);
             $statusCode = $response->getStatusCode();
 
+            if (in_array($statusCode, (array) config('pulse.watchers.requests.ignore_status_codes', []))) {
+                return;
+            }
+
             $user = null;
             try {
                 if (function_exists('auth') && auth()->check()) {
                     $u = auth()->user();
                     $user = [
-                        'id' => method_exists($u, 'getKey') ? $u->getKey() : ($u->id ?? null),
+                        'id' => method_exists($u, 'primaryValue') ? $u->primaryValue() : ($u->id ?? null),
                         'email' => $u->email ?? null,
                         'name' => $u->name ?? ($u->username ?? null),
                     ];
@@ -74,13 +73,13 @@ class RequestWatcher extends Watcher
 
             $entry = Entry::make(EntryType::REQUEST, [
                 'method' => $request->getMethod(),
-                'uri' => $uri,
+                'uri' => $request->getPath(),
                 'status' => $statusCode,
                 'duration_ms' => $duration,
                 'memory_peak' => $payload['memory_peak'] ?? 0,
                 'ip' => $request->ip(),
-                'headers' => $this->mask($request->getHeaders()->all()),
-                'input' => $this->mask((array) $request->input()),
+                'headers' => $request->getHeaders()->all(),
+                'input' => $request->input()->all(),
                 'user' => $user,
                 'response_status' => $statusCode,
                 'response_headers' => $response->getHeaders(),

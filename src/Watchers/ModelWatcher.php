@@ -37,8 +37,8 @@ class ModelWatcher extends Watcher
                 'short_name' => $shortName,
                 'key' => $key,
                 'table' => $payload['table'] ?? null,
-                'attributes' => $this->mask((array) ($payload['attributes'] ?? [])),
-                'changes' => $this->mask((array) ($payload['changes'] ?? [])),
+                'attributes' => (array) ($payload['attributes'] ?? []),
+                'changes' => (array) ($payload['changes'] ?? []),
             ])
                 ->tags([$shortName, $action]);
 

@@ -29,7 +29,10 @@ class ActionController
      */
     public function prune(Request $request): Response
     {
-        $hours = (int) $request->input('hours', config('pulse.storage.prune_hours', 24));
+        $hours = filter_var($request->input('hours', config('pulse.storage.prune_hours', 24)), FILTER_VALIDATE_INT);
+        if ($hours === false || $hours < 1) {
+            return json(['error' => 'Hours must be a positive integer.'], Response::STATUS_UNPROCESSABLE_ENTITY);
+        }
         $count = Pulse::instance()->prune($hours);
 
         return json(['status' => 'success', 'pruned' => $count]);
@@ -40,13 +43,6 @@ class ActionController
      */
     public function toggle(Request $request): Response
     {
-        $pulse = Pulse::instance();
-        if ($pulse->isRecording()) {
-            $pulse->stopRecording();
-        } else {
-            $pulse->startRecording();
-        }
-
-        return json(['status' => 'success', 'recording' => $pulse->isRecording()]);
+        return json(['status' => 'success', 'recording' => Pulse::instance()->toggleRecording()]);
     }
 }

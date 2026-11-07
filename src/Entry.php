@@ -122,6 +122,28 @@ class Entry implements JsonSerializable
         ];
     }
 
+    /** One-line description shared by the activity list and its execution trace. */
+    public static function summary(array $entry): string
+    {
+        $c = array_filter($entry['content'], 'is_scalar');
+        return (string) match ($entry['type']) {
+            EntryType::REQUEST => trim(($c['method'] ?? '') . ' ' . ($c['uri'] ?? '/')),
+            EntryType::HTTP_CLIENT => trim(($c['method'] ?? '') . ' ' . ($c['url'] ?? '')),
+            EntryType::QUERY => $c['sql'] ?? 'Query',
+            EntryType::EXCEPTION => ($c['class'] ?? 'Exception') . ' · ' . ($c['message'] ?? ''),
+            EntryType::COMMAND => 'spark ' . ($c['name'] ?? $c['command'] ?? ''),
+            EntryType::JOB, EntryType::EVENT => $c['name'] ?? ucfirst($entry['type']),
+            EntryType::CACHE => ($c['action'] ?? 'Cache') . ' ' . ($c['key'] ?? implode(', ', array_filter((array) ($entry['content']['keys'] ?? []), 'is_scalar'))),
+            EntryType::GATE => $c['ability'] ?? 'Gate',
+            EntryType::LOG => $c['message'] ?? 'Log entry',
+            EntryType::MAIL => $c['subject'] ?? 'Mail',
+            EntryType::MODEL => ($c['action'] ?? '') . ' ' . ($c['model'] ?? 'Model'),
+            EntryType::VIEW => $c['template'] ?? $c['path'] ?? 'View',
+            EntryType::PERFORMANCE => 'Server snapshot',
+            default => $entry['type'],
+        };
+    }
+
     /**
      * Specify data which should be serialized to JSON.
      *

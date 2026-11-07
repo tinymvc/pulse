@@ -8,29 +8,55 @@ use Spark\Pulse\EntryType;
 use Spark\Pulse\Pulse;
 use Spark\Pulse\Recorders\ServerPerformanceRecorder;
 
-/**
- * Pulse Dashboard Controller.
- *
- * @package Spark\Pulse\Http\Controllers
- * @author Shahin Moyshan <shahin.moyshan2@gmail.com>
- */
 class DashboardController
 {
-    /**
-     * Render the main Pulse dashboard view.
-     */
     public function index(Request $request): Response
     {
-        $pulse = Pulse::instance();
-        $counts = $pulse->counts();
-        $server = ServerPerformanceRecorder::sample();
+        // Spark creates a fresh Blade instance when handling another request.
+        $published = views_dir('vendor/pulse');
+        blade()->usePath(is_file("$published/dashboard.blade.php") ? $published : dirname(__DIR__, 3) . '/resources/views', 'pulse');
 
-        return view('pulse::dashboard', [
-            'counts' => $counts,
-            'server' => $server,
-            'pulse' => $pulse,
-            'activeTab' => (string) $request->query('tab', 'dashboard'),
-            'path' => '/' . ltrim((string) config('pulse.path', 'pulse'), '/'),
-        ]);
+        $query = array_filter($request->query->all(), 'is_string');
+        $type = EntryType::normalize($query['tab'] ?? '');
+        $tab = EntryType::isValid($type) ? $type : 'dashboard';
+        $overview = $tab === 'dashboard';
+        $search = $query['search'] ?? '';
+        $options = [
+            'limit' => $overview ? 7 : 30,
+            'search' => $overview ? '' : $search,
+            'before' => $query['before'] ?? null,
+            'before_id' => $query['before_id'] ?? null,
+        ];
+
+        $pulse = Pulse::instance();
+        $storage = $pulse->storage();
+        $entry = null;
+        $trace = [];
+        if (isset($query['entry'])) {
+            $entry = $storage->find($query['entry']);
+            if ($entry === null) {
+                return Response::error(Response::STATUS_NOT_FOUND, 'This entry is no longer available.');
+            }
+            $trace = $storage->getByBatch($entry['batch_id']);
+        }
+        $page = $entry ? null : $storage->get($overview ? EntryType::REQUEST : $tab, $options);
+        $data = [
+            'tab' => $tab,
+            'overview' => $overview,
+            'groups' => EntryType::groups(),
+            'counts' => $pulse->counts(),
+            'server' => $overview && !$entry
+                ? ServerPerformanceRecorder::sample()
+                : ['runtime' => ServerPerformanceRecorder::sampleRuntime()],
+            'recording' => $pulse->isRecording(),
+            'entry' => $entry,
+            'trace' => $trace,
+            'page' => $page,
+            'search' => $search,
+            'path' => route_url('pulse.dashboard'),
+            'filters' => array_intersect_key($query, array_flip(['tab', 'before', 'before_id', 'search'])),
+        ];
+
+        return view($request->header('X-Pulse-Refresh') === '1' ? 'pulse::workspace' : 'pulse::dashboard', $data);
     }
 }

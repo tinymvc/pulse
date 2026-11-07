@@ -8,13 +8,11 @@ use Spark\Testing\ApplicationTestCase;
 
 abstract class TestCase extends ApplicationTestCase
 {
-    protected function testStorageDirectory(): string
-    {
-        return __DIR__ . '/.cache';
-    }
+    protected string $dashboardPath = 'pulse';
 
     protected function createApplication(): Application
     {
+        mkdir($this->storagePath . '/resources/views', 0755, true);
         $app = Application::create(path: $this->storagePath, config: [
             'app' => [
                 'debug' => true,
@@ -23,7 +21,7 @@ abstract class TestCase extends ApplicationTestCase
                 'timezone' => 'UTC',
                 'storage_dir' => $this->storagePath,
                 'temp_dir' => $this->storagePath . '/temp',
-                'views_dir' => dirname(__DIR__, 2) . '/tinycore/src/Foundation/resources/views',
+                'views_dir' => $this->storagePath . '/resources/views',
             ],
             'database' => [
                 'driver' => 'sqlite',
@@ -31,6 +29,8 @@ abstract class TestCase extends ApplicationTestCase
             ],
             'pulse' => [
                 'enabled' => true,
+                'path' => $this->dashboardPath,
+                'watchers' => ['performance' => ['sample_rate' => 0]],
                 'storage' => [
                     'driver' => 'memory',
                 ],

@@ -34,7 +34,7 @@ class GateWatcher extends Watcher
             $userInfo = null;
             if ($user !== null) {
                 $userInfo = [
-                    'id' => is_object($user) && method_exists($user, 'getKey') ? $user->getKey() : ($user->id ?? (is_scalar($user) ? $user : null)),
+                    'id' => is_array($user) ? ($user['id'] ?? null) : ($user->id ?? (is_scalar($user) ? $user : null)),
                     'class' => is_object($user) ? get_class($user) : null,
                 ];
             }
@@ -45,7 +45,7 @@ class GateWatcher extends Watcher
                 'ability' => $ability,
                 'result' => $result,
                 'user' => $userInfo,
-                'arguments' => $this->mask((array) ($payload['arguments'] ?? [])),
+                'arguments' => (array) ($payload['arguments'] ?? []),
             ])
                 ->tags($tags);
 

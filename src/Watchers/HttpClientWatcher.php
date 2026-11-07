@@ -23,17 +23,34 @@ class HttpClientWatcher extends Watcher
 
     protected function boot(): void
     {
-        Telemetry::listen('http.request', function (array $payload) {
-            $url = (string) ($payload['url'] ?? '');
-            $duration = (float) ($payload['duration_ms'] ?? 0.0);
-            $req = (array) ($payload['payload'] ?? []);
-            $resp = (array) ($payload['response'] ?? []);
-
+        Telemetry::listen('http.request', function (
+            string|array $url,
+            array $req = [],
+            array $resp = [],
+            float $duration = 0.0
+        ) {
+            if (is_array($url)) {
+                $req = $url['payload'] ?? [];
+                $resp = $url['response'] ?? [];
+                $duration = (float) ($url['duration_ms'] ?? 0);
+                $url = (string) ($url['url'] ?? '');
+            }
             $method = strtoupper((string) ($req['method'] ?? 'GET'));
             $status = (int) ($resp['status'] ?? 0);
 
             $parsedUrl = parse_url($url);
-            $domain = $parsedUrl['host'] ?? $url;
+            $domain = $parsedUrl['host'] ?? '';
+            $authority = $domain === '' ? '' : ($parsedUrl['scheme'] ?? 'https') . '://' . $domain;
+            if (isset($parsedUrl['port'])) {
+                $authority .= ':' . $parsedUrl['port'];
+            }
+            $url = $authority . ($parsedUrl['path'] ?? '/');
+            $req['url'] = $url;
+            $req['headers'] = $this->headers($req['headers'] ?? []);
+            if (isset($req['body']) && is_string($req['body'])) {
+                $body = json_decode($req['body'], true);
+                $req['body'] = is_array($body) ? $body : '[raw body omitted]';
+            }
 
             $slowThreshold = (float) config('pulse.slow_thresholds.http_client', 1000);
             $tags = [$method, $domain];
@@ -50,9 +67,9 @@ class HttpClientWatcher extends Watcher
                 'domain' => $domain,
                 'status' => $status,
                 'duration_ms' => $duration,
-                'payload' => $this->mask($req),
+                'payload' => $req,
                 'response_status' => $status,
-                'response_headers' => $resp['headers'] ?? [],
+                'response_headers' => $this->headers($resp['headers'] ?? []),
             ])
             ->duration($duration)
             ->tags($tags);
