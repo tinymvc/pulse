@@ -12,6 +12,21 @@ use Tests\TestCase;
 
 class ConsoleCommandsTest extends TestCase
 {
+    public function test_vendor_publish_can_install_only_the_pulse_views(): void
+    {
+        $console = App::get(Console::class);
+        ob_start();
+        try {
+            $console->executeCommand('vendor:publish', ['tag' => 'pulse-views']);
+        } finally {
+            ob_end_clean();
+        }
+
+        $this->assertFileExists(views_dir('vendor/pulse/components/detail.blade.php'));
+        $this->assertFalse(is_file(root_dir('config/pulse.php')));
+        $this->assertFalse(is_dir(root_dir('database/migrations')));
+    }
+
     public function test_pulse_install_command_runs(): void
     {
         /** @var Console $console */

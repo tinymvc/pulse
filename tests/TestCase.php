@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Spark\Foundation\Application;
+use Spark\Foundation\Providers\ConsoleServiceProvider;
 use Spark\Pulse\PulseServiceProvider;
 use Spark\Testing\ApplicationTestCase;
 
@@ -39,6 +40,7 @@ abstract class TestCase extends ApplicationTestCase
             ],
         ], providers: [
             PulseServiceProvider::class,
+            ConsoleServiceProvider::class,
         ]);
 
         $app->withMiddleware(queue: $this->globalMiddleware)->boot();

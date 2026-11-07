@@ -4,7 +4,7 @@ Pulse is a request and execution inspector for TinyMVC Spark. Open a request to 
 
 ## Install
 
-Requires PHP 8.2+ with `mbstring` and TinyCore 4.2.15+ in the 4.x series. Database storage requires the PDO driver for your database. From your Spark application, install the tagged release when available.
+Requires PHP 8.2+ with `mbstring` and TinyCore 4.2.16+ in the 4.x series. Database storage requires the PDO driver for your database. From your Spark application, install the tagged release when available.
 
 ```sh
 composer require --dev tinymvc/pulse
@@ -39,7 +39,9 @@ Open **Exceptions** to inspect the original message, file, line, and stack trace
 
 ## Configuration
 
-Edit `config/pulse.php` to enable individual watchers, ignore paths or commands, and adjust slow-operation thresholds. The dashboard excludes its own requests. To customize its Blade templates, run `php spark pulse:install --views` and edit `resources/views/vendor/pulse`. The installer preserves existing files.
+Edit `config/pulse.php` to enable individual watchers, ignore paths or commands, and adjust slow-operation thresholds. The dashboard excludes its own requests. To customize its Blade templates, run `php spark vendor:publish --tag=pulse-views` and edit `resources/views/vendor/pulse`.
+
+`pulse:install` publishes the `pulse-config` and `pulse-migrations` tags. Add `--views` to include templates. You can publish each tag individually with `vendor:publish`. Existing files are preserved unless you pass `--force` to `vendor:publish`.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
