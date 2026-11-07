@@ -45,8 +45,10 @@ class MemoryStorage implements StorageContract
                 return false;
             }
 
-            if (!empty($options['before']) && ($entry['created_at'] > $options['before']
-                || ($entry['created_at'] === $options['before'] && (empty($options['before_id']) || strcmp($entry['id'], $options['before_id']) >= 0)))) {
+            if (
+                !empty($options['before']) && ($entry['created_at'] > $options['before']
+                    || ($entry['created_at'] === $options['before'] && (empty($options['before_id']) || strcmp($entry['id'], $options['before_id']) >= 0)))
+            ) {
                 return false;
             }
 
@@ -60,7 +62,7 @@ class MemoryStorage implements StorageContract
 
             if (!empty($options['slow_only'])) {
                 $threshold = (float) ($options['slow_threshold'] ?? config("pulse.slow_thresholds.$type", 500));
-                if (($entry['duration'] ?? 0) < $threshold) {
+                if ($entry['duration'] === null || $entry['duration'] < $threshold) {
                     return false;
                 }
             }

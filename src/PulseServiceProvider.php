@@ -108,17 +108,31 @@ class PulseServiceProvider extends ServiceProvider
 
         $pulse = $this->app->get(Pulse::class);
 
-        Pulse::newBatchId();
-        $newBatch = Pulse::newBatchId(...);
-
-        Telemetry::listen('command.starting', $newBatch);
-        Telemetry::listen('job.processing', $newBatch);
-        // A queue worker may stay alive indefinitely after a short job.
-        Telemetry::listen('job.processed', $pulse->flush(...), -100);
-        Telemetry::listen('job.failed', $pulse->flush(...), -100);
+        $this->listenForExecutions($pulse);
 
         foreach ($this->watchers as $watcherClass) {
             (new $watcherClass())->register($pulse);
         }
+    }
+
+    private function listenForExecutions(Pulse $pulse): void
+    {
+        Pulse::newBatchId();
+        Telemetry::listen('command.starting', fn() => $pulse->beginExecution('command'), PHP_INT_MAX);
+        Telemetry::listen('command.finished', fn() => $pulse->endExecution('command'), PHP_INT_MIN);
+
+        $jobScope = static fn(array $payload): string => 'job:' . ($payload['id'] ?? '');
+        Telemetry::listen('job.processing', fn(array $payload) => $pulse->beginExecution($jobScope($payload)), PHP_INT_MAX);
+        // Spark can fail while resolving retry settings, before it emits job.processing.
+        Telemetry::listen('job.failed', fn(array $payload) => $pulse->beginExecution($jobScope($payload), ifMissing: true), PHP_INT_MAX);
+        $finishJob = static function (array $payload) use ($pulse, $jobScope): void {
+            try {
+                $pulse->flush();
+            } finally {
+                $pulse->endExecution($jobScope($payload));
+            }
+        };
+        Telemetry::listen('job.processed', $finishJob, PHP_INT_MIN);
+        Telemetry::listen('job.failed', $finishJob, PHP_INT_MIN);
     }
 }

@@ -93,13 +93,13 @@ class LanguageFileWatcherTest extends TestCase
         $pulse->record($file('en/other.php', 1024));
         $pulse->flush();
         $this->get($url)->assertOk()->assertSee('Largest language file allocation increase')
-            ->assertSee('+2 MB · en/catalogue.php')->assertSee('entry=' . $largest->id)->assertSee('123 µs');
+            ->assertSee('+2 MiB · en/catalogue.php')->assertSee('entry=' . $largest->id)->assertSee('123 µs');
     }
 
     public function test_allocation_change_preserves_zero_and_direction(): void
     {
         $this->assertSame('0 B', ServerPerformanceRecorder::formatByteChange(0));
-        $this->assertSame('+2 MB', ServerPerformanceRecorder::formatByteChange(2097152));
-        $this->assertSame('−1 KB', ServerPerformanceRecorder::formatByteChange(-1024));
+        $this->assertSame('+2 MiB', ServerPerformanceRecorder::formatByteChange(2097152));
+        $this->assertSame('−1 KiB', ServerPerformanceRecorder::formatByteChange(-1024));
     }
 }

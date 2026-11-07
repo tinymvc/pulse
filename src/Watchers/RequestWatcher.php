@@ -7,6 +7,7 @@ use Spark\Http\Response;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Telemetry;
+use function in_array;
 
 /**
  * Request Watcher.
@@ -40,7 +41,7 @@ class RequestWatcher extends Watcher
                 return;
             }
 
-            $duration = (float) ($payload['duration_ms'] ?? 0.0);
+            $duration = $payload['duration_ms'] ?? null;
             $statusCode = $response->getStatusCode();
 
             if (in_array($statusCode, (array) config('pulse.watchers.requests.ignore_status_codes', []))) {
@@ -61,7 +62,7 @@ class RequestWatcher extends Watcher
             }
 
             $slowThreshold = (float) config('pulse.slow_thresholds.request', 500);
-            $isSlow = $duration >= $slowThreshold;
+            $isSlow = $duration !== null && $duration >= $slowThreshold;
 
             $tags = [$request->getMethod(), (string) $statusCode];
             if ($isSlow) {
@@ -76,7 +77,7 @@ class RequestWatcher extends Watcher
                 'uri' => $request->getPath(),
                 'status' => $statusCode,
                 'duration_ms' => $duration,
-                'memory_peak' => $payload['memory_peak'] ?? 0,
+                'memory_peak' => $payload['memory_peak'] ?? null,
                 'ip' => $request->ip(),
                 'headers' => $request->getHeaders()->all(),
                 'input' => $request->input()->all(),

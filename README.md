@@ -4,13 +4,11 @@ Pulse is a request and execution inspector for TinyMVC Spark. Open a request to 
 
 ## Install
 
-Requires PHP 8.2+ and TinyCore 4.2.15+ in the 4.x series. From your Spark application, install the development branch.
+Requires PHP 8.2+ with `mbstring` and TinyCore 4.2.15+ in the 4.x series. Database storage requires the PDO driver for your database. From your Spark application, install the tagged release when available.
 
 ```sh
-composer require --dev tinymvc/pulse:dev-main
+composer require --dev tinymvc/pulse
 ```
-
-If your Composer registry does not list Pulse, register its source with `composer config repositories.pulse vcs https://github.com/tinymvc/pulse` and rerun the install command. For a deployment that includes Pulse, omit `--dev`.
 
 Add the provider to the array in `bootstrap/providers.php`.
 
@@ -27,7 +25,15 @@ php spark migrate
 
 Visit a route in your application, then open **`/pulse`**. Select an entry to inspect its payload and execution trace. Live updates refresh the overview and lists every five seconds.
 
-Open **Language files** to see which translation files Spark loaded and how long each load took. Request details count the loads, link to the largest observed allocation increase, and show each file in the trace. **PHP allocation change** measures the change in memory reserved by PHP from immediately before the include to the Pulse listener. A load can show 0 B when PHP reuses reserved memory. Cached lookups produce no additional entry. Set `watchers.language_files.enabled` to `false` to disable this watcher.
+Open **Language files** to see which translation files Spark loaded and how long each load took. Request details count the loads, link to the largest observed allocation increase, and show each file in the trace. Cached lookups produce no additional entry. Set `watchers.language_files.enabled` to `false` to disable this watcher.
+
+## Reading the measurements
+
+- **Duration** is Spark’s elapsed time in milliseconds. The dashboard displays short operations in microseconds or nanoseconds. A request spans dispatch through response preparation. A Blade duration covers running the compiled template and includes nested renders. Adding trace durations can double-count that work. The dashboard uses the original payload measurement when available.
+- **PHP memory** is allocator-reserved memory. A request’s peak is the PHP process high-water mark and can include earlier work in a long-running worker. Queries, views, and language files report the signed allocation change from Spark’s pre-operation sample to Pulse’s completion listener. A zero change can mean PHP reused memory. Raw PHP allocation fields are in bytes. Display values use binary units such as MiB.
+- **Server metrics** describe the machine and the filesystem containing application storage. CPU percentage needs two Linux counter readings in the same PHP process. Unsupported host metrics are unavailable. The overview samples its serving process, and the performance watcher records a fresh snapshot for a configurable percentage of requests (1% by default).
+- **Repeated queries** count executions of the same SQL text on the same connection within a trace. Bound values can differ.
+- **Time** is stored in UTC. With JavaScript enabled, the dashboard shows browser-local time on a 12-hour clock. Trace timestamps mark when Pulse observed completion.
 
 ## Configuration
 

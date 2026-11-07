@@ -9,6 +9,7 @@ use Spark\Testing\ApplicationTestCase;
 abstract class TestCase extends ApplicationTestCase
 {
     protected string $dashboardPath = 'pulse';
+    protected string $storageDriver = 'memory';
 
     protected function createApplication(): Application
     {
@@ -32,7 +33,7 @@ abstract class TestCase extends ApplicationTestCase
                 'path' => $this->dashboardPath,
                 'watchers' => ['performance' => ['sample_rate' => 0]],
                 'storage' => [
-                    'driver' => 'memory',
+                    'driver' => $this->storageDriver,
                 ],
             ],
         ], providers: [

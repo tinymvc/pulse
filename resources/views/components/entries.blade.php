@@ -41,6 +41,7 @@
                         @php
                             $date = date_create_immutable($row['created_at']);
                             $summary = Entry::summary($row);
+                            $duration = $row['content']['duration_ms'] ?? $row['duration'];
                             $link = $path . '?' . http_build_query(array_merge($filters, ['entry' => $row['id']]));
                             $tags = $overview ? [$row['content']['status'] ?? '—'] : array_slice($row['tags'], 0, 2);
                         @endphp
@@ -51,9 +52,6 @@
                                 <td class="mono">
                                     {{ isset($row['content']['allocated_change_bytes']) ? ServerPerformanceRecorder::formatByteChange($row['content']['allocated_change_bytes']) : '—' }}
                                 </td>
-                                <td class="mono">
-                                    {{ isset($row['content']['duration_ms']) ? ServerPerformanceRecorder::formatDuration($row['content']['duration_ms']) : '—' }}
-                                </td>
                             @else
                                 <td>
                                     <div class="tags">
@@ -63,9 +61,10 @@
                                         @endforeach
                                     </div>
                                 </td>
-                                <td class="mono">{{ $row['duration'] !== null ? $row['duration'] . ' ms' : '—' }}
-                                </td>
                             @endif
+                            <td class="mono">
+                                {{ is_numeric($duration) ? ServerPerformanceRecorder::formatDuration($duration) : '—' }}
+                            </td>
                             <td class="mono"><time data-local-time="clock" datetime="{{ $row['created_at'] }}"
                                     title="{{ $row['created_at'] }}">{{ $date ? $date->format('g:i:s A') : $row['created_at'] }}</time>
                             </td>

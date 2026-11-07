@@ -39,7 +39,7 @@ class EventWatcher extends Watcher
 
         $events->addListener('*', function (string $eventName, ...$payload) {
             // Ignore internal telemetry events to prevent infinite loops
-            if (str_starts_with($eventName, 'app:')) {
+            if (str_starts_with($eventName, 'app:') || !$this->pulse->shouldRecord()) {
                 return;
             }
 
@@ -66,10 +66,13 @@ class EventWatcher extends Watcher
         }
 
         if (is_object($payload)) {
-            return [
-                'class' => get_class($payload),
-                'properties' => method_exists($payload, 'toArray') ? $payload->toArray() : get_object_vars($payload),
-            ];
+            $event = ['class' => get_class($payload)];
+            try {
+                $event['properties'] = method_exists($payload, 'toArray') ? $payload->toArray() : get_object_vars($payload);
+            } catch (\Throwable) {
+                // A payload that cannot be serialized must still reach application listeners.
+            }
+            return $event;
         }
 
         return is_array($payload) ? $payload : ['value' => $payload];

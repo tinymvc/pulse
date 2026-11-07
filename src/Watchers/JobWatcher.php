@@ -52,16 +52,10 @@ class JobWatcher extends Watcher
         Telemetry::listen('job.processed', function (array $payload) {
             $job = $payload['job'] ?? null;
             $queue = (string) ($payload['queue'] ?? 'default');
-            $duration = (float) ($payload['duration_ms'] ?? 0.0);
+            $duration = $payload['duration_ms'] ?? null;
             $jobName = $this->recordableName($job);
             if ($jobName === null) {
                 return;
-            }
-
-            $slowThreshold = (float) config('pulse.slow_thresholds.job', 1000);
-            $tags = [$jobName, $queue, 'processed'];
-            if ($duration >= $slowThreshold) {
-                $tags[] = 'slow';
             }
 
             $entry = Entry::make(EntryType::JOB, [
@@ -72,7 +66,7 @@ class JobWatcher extends Watcher
                 'duration_ms' => $duration,
             ])
                 ->duration($duration)
-                ->tags($tags);
+                ->tags($this->attemptTags($jobName, $queue, 'processed', $duration));
 
             $this->record($entry);
         });
@@ -81,7 +75,7 @@ class JobWatcher extends Watcher
         Telemetry::listen('job.failed', function (array $payload) {
             $job = $payload['job'] ?? null;
             $queue = (string) ($payload['queue'] ?? 'default');
-            $duration = (float) ($payload['duration_ms'] ?? 0.0);
+            $duration = $payload['duration_ms'] ?? null;
             $exception = $payload['exception'] ?? null;
             $jobName = $this->recordableName($job);
             if ($jobName === null) {
@@ -103,10 +97,19 @@ class JobWatcher extends Watcher
                 ] : null,
             ])
                 ->duration($duration)
-                ->tags([$jobName, $queue, 'failed']);
+                ->tags($this->attemptTags($jobName, $queue, 'failed', $duration));
 
             $this->record($entry);
         });
+    }
+
+    private function attemptTags(string $name, string $queue, string $status, ?float $duration): array
+    {
+        $tags = [$name, $queue, $status];
+        if ($duration !== null && $duration >= (float) config('pulse.slow_thresholds.job', 1000)) {
+            $tags[] = 'slow';
+        }
+        return $tags;
     }
 
     private function recordableName(mixed $job): ?string

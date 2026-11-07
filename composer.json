@@ -4,6 +4,7 @@
     "license": "MIT",
     "require": {
         "php": ">=8.2",
+        "ext-mbstring": "*",
         "tinymvc/tinycore": "^4.2.15 || dev-main"
     },
     "autoload": {
@@ -24,5 +25,15 @@
             "name": "Shahin Moyshan",
             "email": "shahin.moyshan2@gmail.com"
         }
-    ]
+    ],
+    "archive": {
+        "exclude": [
+            "/vendor",
+            "/tests",
+            "/composer.lock",
+            "/.gitignore",
+            "/.gitattributes",
+            ".DS_Store"
+        ]
+    }
 }

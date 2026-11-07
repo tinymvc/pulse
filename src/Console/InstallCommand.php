@@ -14,11 +14,10 @@ class InstallCommand
         Prompt::section('Installing Spark Pulse');
 
         $package = dirname(__DIR__, 2);
-        $migration = 'database/migrations/migration_2026_10_30_000000_pulse_entries.php';
 
         try {
             $this->publish("$package/config/pulse.php", root_dir('config/pulse.php'));
-            $this->publish("$package/$migration", root_dir($migration));
+            $this->publish("$package/database/migrations", root_dir('database/migrations'));
             if (array_key_exists('views', $args)) {
                 $this->publish("$package/resources/views", views_dir('vendor/pulse'));
             }

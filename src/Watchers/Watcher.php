@@ -7,6 +7,10 @@ use Spark\Pulse\Entry;
 use Spark\Pulse\Pulse;
 use Spark\Support\Str;
 use function is_array;
+use function is_float;
+use function is_object;
+use function is_string;
+use function strlen;
 
 /**
  * Base Watcher implementation for Spark Pulse.
@@ -16,23 +20,15 @@ use function is_array;
  */
 abstract class Watcher implements WatcherContract
 {
-    /** @var Pulse */
     protected Pulse $pulse;
 
-    /** @var string Config key identifier */
-    protected string $key;
+    /** @var array<string, bool>|null Cached sensitive keys lookup map */
+    protected static ?array $sensitiveMap = null;
 
-    /**
-     * Watcher constructor.
-     */
-    public function __construct(string $key)
+    public function __construct(protected string $key)
     {
-        $this->key = $key;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function register(Pulse $pulse): void
     {
         $this->pulse = $pulse;
@@ -42,16 +38,8 @@ abstract class Watcher implements WatcherContract
         }
     }
 
-    /**
-     * Attach watcher-specific listeners and hooks.
-     *
-     * @return void
-     */
     abstract protected function boot(): void;
 
-    /**
-     * {@inheritdoc}
-     */
     public function isEnabled(): bool
     {
         return (bool) config("pulse.watchers.{$this->key}.enabled", true);
@@ -79,6 +67,16 @@ abstract class Watcher implements WatcherContract
         return false;
     }
 
+    /** Reserved PHP memory at framework entry and on delivery of its completion event. */
+    protected function allocation(?int $before, int $after): array
+    {
+        return $before === null ? [] : [
+            'allocated_before_bytes' => $before,
+            'allocated_after_bytes' => $after,
+            'allocated_change_bytes' => $after - $before,
+        ];
+    }
+
     protected function isPathExcluded(string $path): bool
     {
         return $this->isExcluded($path, ltrim($path, '/'));
@@ -98,12 +96,6 @@ abstract class Watcher implements WatcherContract
         }
     }
 
-    /** @var array<string, bool>|null Cached sensitive keys lookup map */
-    protected static ?array $sensitiveMap = null;
-
-    /**
-     * Reset cached sensitive keys map.
-     */
     public static function resetSensitiveMap(): void
     {
         static::$sensitiveMap = null;
@@ -178,6 +170,8 @@ abstract class Watcher implements WatcherContract
                 $value = $this->maskRecursive($value, $sensitiveMap, $remaining, $depth + 1);
             } elseif (is_object($value) || is_resource($value)) {
                 $value = get_debug_type($value);
+            } elseif (is_float($value) && !is_finite($value)) {
+                $value = (string) $value;
             } elseif (is_string($value)) {
                 if (strlen($value) > 8192) {
                     $value = substr($value, 0, 8192) . '…';

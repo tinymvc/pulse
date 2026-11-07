@@ -36,7 +36,7 @@ class CommandWatcher extends Watcher
                 return;
             }
 
-            $duration = (float) ($payload['duration_ms'] ?? 0.0);
+            $duration = $payload['duration_ms'] ?? null;
             $exitCode = (int) ($payload['exit_code'] ?? 0);
 
             $tags = [$name, $exitCode === 0 ? 'success' : 'failed'];

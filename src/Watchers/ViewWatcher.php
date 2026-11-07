@@ -5,6 +5,7 @@ namespace Spark\Pulse\Watchers;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Telemetry;
+use function is_array;
 
 /**
  * Blade View Watcher.
@@ -23,9 +24,11 @@ class ViewWatcher extends Watcher
 
     protected function boot(): void
     {
-        Telemetry::listen('bladeTemplateRendered', function (string|array $path, float $time = 0, int $memory = 0, array $keys = []) {
+        Telemetry::listen('bladeTemplateRendered', function (string|array $path, ?float $time = null, ?int $memory = null, array $keys = []) {
+            $after = memory_get_usage(true);
             if (is_array($path)) {
-                $time = (float) ($path['time'] ?? 0);
+                $time = $path['time'] ?? null;
+                $memory = $path['memory_before'] ?? null;
                 $keys = $path['data_keys'] ?? [];
                 $template = $path['template'] ?? null;
                 $path = (string) ($path['path'] ?? '');
@@ -39,12 +42,13 @@ class ViewWatcher extends Watcher
                 'template' => $template,
                 'path' => $path,
                 'duration_ms' => $time,
+                ...$this->allocation($memory, $after),
                 'data_keys' => $keys,
             ])
                 ->duration($time)
                 ->tags([(string) $template]);
 
             $this->record($entry);
-        });
+        }, priority: PHP_INT_MAX);
     }
 }

@@ -12,18 +12,22 @@
     <div class="detail-body">
         <h3>{{ Entry::summary($entry) }}</h3>
         <div class="tags">
-            @if ($entry['type'] === EntryType::LANGUAGE_FILE && isset($entry['content']['duration_ms']))
-                <span
-                    class="tag">{{ ServerPerformanceRecorder::formatDuration($entry['content']['duration_ms']) }}</span>
-            @elseif($entry['duration'] !== null)
-                <span class="tag">{{ $entry['duration'] }} ms</span>
+            @php($duration = $entry['content']['duration_ms'] ?? $entry['duration'])
+            @if (is_numeric($duration))
+                <span class="tag">{{ ServerPerformanceRecorder::formatDuration($duration) }}</span>
             @endif
             @foreach ($entry['tags'] as $tag)
                 <span class="tag">{{ $tag }}</span>
             @endforeach
         </div>
         <dl class="facts ids">
-            @if ($entry['type'] === EntryType::LANGUAGE_FILE && isset($entry['content']['allocated_change_bytes']))
+            @if ($entry['type'] === EntryType::REQUEST && isset($entry['content']['memory_peak']))
+                <div>
+                    <dt>Peak PHP process allocation</dt>
+                    <dd>{{ ServerPerformanceRecorder::formatBytes($entry['content']['memory_peak']) }}</dd>
+                </div>
+            @endif
+            @if (isset($entry['content']['allocated_change_bytes']))
                 <div>
                     <dt>PHP allocation change</dt>
                     <dd>{{ ServerPerformanceRecorder::formatByteChange($entry['content']['allocated_change_bytes']) }}
@@ -39,7 +43,8 @@
                     <div>
                         <dt>Largest language file allocation increase</dt>
                         <dd><a
-                                href="{{ $path . '?' . http_build_query(array_merge($filters, ['entry' => $largest['id']])) }}">{{ ServerPerformanceRecorder::formatByteChange($largest['content']['allocated_change_bytes']) . ' · ' . Entry::summary($largest) }}</a></dd>
+                                href="{{ $path . '?' . http_build_query(array_merge($filters, ['entry' => $largest['id']])) }}">{{ ServerPerformanceRecorder::formatByteChange($largest['content']['allocated_change_bytes']) . ' · ' . Entry::summary($largest) }}</a>
+                        </dd>
                     </div>
                 @endif
             @endif
@@ -73,11 +78,20 @@
                 <div><small>{{ $labels[$step['type']] ?? $step['type'] }}</small>
                     <a href="{{ $path . '?' . http_build_query(array_merge($filters, ['entry' => $step['id']])) }}"
                         @if ($step['id'] === $entry['id']) aria-current="page" @endif>{{ Entry::summary($step) }}</a>
-                    @if (
-                        $step['type'] === EntryType::LANGUAGE_FILE &&
-                            isset($step['content']['duration_ms'], $step['content']['allocated_change_bytes']))
-                        <small>{{ ServerPerformanceRecorder::formatDuration($step['content']['duration_ms']) }} ·
-                            {{ 'PHP allocation ' . ServerPerformanceRecorder::formatByteChange($step['content']['allocated_change_bytes']) }}</small>
+                    @php
+                        $elapsed = $step['content']['duration_ms'] ?? $step['duration'];
+                        $metrics = [];
+                        if (is_numeric($elapsed)) {
+                            $metrics[] = ServerPerformanceRecorder::formatDuration($elapsed);
+                        }
+                        if (isset($step['content']['allocated_change_bytes'])) {
+                            $metrics[] =
+                                'PHP allocation ' .
+                                ServerPerformanceRecorder::formatByteChange($step['content']['allocated_change_bytes']);
+                        }
+                    @endphp
+                    @if ($metrics)
+                        <small>{{ implode(' · ', $metrics) }}</small>
                     @endif
                 </div>
             </li>

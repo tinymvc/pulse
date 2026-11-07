@@ -44,7 +44,7 @@ class PerformanceWatcher extends Watcher
      */
     public function captureSnapshot(): Entry
     {
-        $sample = ServerPerformanceRecorder::sample();
+        $sample = ServerPerformanceRecorder::sample(fresh: true);
 
         $entry = Entry::make(EntryType::PERFORMANCE, $sample)
             ->tags(['server', 'metrics']);

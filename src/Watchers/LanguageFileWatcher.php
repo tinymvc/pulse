@@ -32,9 +32,7 @@ class LanguageFileWatcher extends Watcher
             $entry = Entry::make(EntryType::LANGUAGE_FILE, [
                 'path' => $path,
                 'duration_ms' => $duration,
-                'allocated_before_bytes' => $memoryBefore,
-                'allocated_after_bytes' => $memoryAfter,
-                'allocated_change_bytes' => $memoryAfter - $memoryBefore,
+                ...$this->allocation($memoryBefore, $memoryAfter),
             ])->duration($duration);
 
             $this->record($entry);

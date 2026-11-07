@@ -51,7 +51,8 @@ class CheckCommand
 
         Prompt::message('  Load (1 min)   : ' . ($sample['load']['1m'] ?? 'Unavailable'));
         Prompt::message('  App Memory     : ' . ($sample['memory']['app_formatted'] ?? 'N/A') . ' (Peak: ' . ($sample['memory']['app_peak_formatted'] ?? 'N/A') . ')');
-        Prompt::message('  Disk Usage     : ' . ($sample['disk']['used_formatted'] ?? 'N/A') . ' of ' . ($sample['disk']['total_formatted'] ?? 'N/A') . ' (' . ($sample['disk']['usage_percent'] ?? 0) . '%)');
+        $diskPercent = $sample['disk']['usage_percent'];
+        Prompt::message('  Disk Usage     : ' . ($sample['disk']['used_formatted'] ?? 'N/A') . ' of ' . ($sample['disk']['total_formatted'] ?? 'N/A') . ($diskPercent !== null ? " ($diskPercent%)" : ''));
         Prompt::newline();
 
         return 0;

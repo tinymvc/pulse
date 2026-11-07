@@ -23,11 +23,12 @@ class HttpClientWatcher extends Watcher
 
     protected function boot(): void
     {
-        Telemetry::listen('http.request', function (string|array $url, array $req = [], array $resp = [], float $duration = 0.0) {
+        Telemetry::listen('http.request', function (string|array $url, array $req = [], array $resp = [], ?float $duration = null, ?\Throwable $error = null) {
             if (is_array($url)) {
                 $req = $url['payload'] ?? [];
                 $resp = $url['response'] ?? [];
-                $duration = (float) ($url['duration_ms'] ?? 0);
+                $duration = $url['duration_ms'] ?? null;
+                $error = $url['error'] ?? null;
                 $url = (string) ($url['url'] ?? '');
             }
             $method = strtoupper((string) ($req['method'] ?? 'GET'));
@@ -53,10 +54,10 @@ class HttpClientWatcher extends Watcher
 
             $slowThreshold = (float) config('pulse.slow_thresholds.http_client', 1000);
             $tags = [$method, $domain];
-            if ($duration >= $slowThreshold) {
+            if ($duration !== null && $duration >= $slowThreshold) {
                 $tags[] = 'slow';
             }
-            if ($status >= 400 || $status === 0) {
+            if ($status >= 400 || $status === 0 || $error instanceof \Throwable) {
                 $tags[] = 'error';
             }
 
@@ -68,6 +69,7 @@ class HttpClientWatcher extends Watcher
                 'duration_ms' => $duration,
                 'payload' => $req,
                 'response_status' => $status,
+                'error_class' => $error instanceof \Throwable ? $error::class : null,
                 'response_headers' => $this->headers($resp['headers'] ?? []),
             ])
                 ->duration($duration)

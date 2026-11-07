@@ -58,6 +58,14 @@ class PerformanceOptimizationTest extends TestCase
         $this->assertSame(0, $counts[EntryType::JOB]);
     }
 
+    public function test_memory_units_and_byte_parsing(): void
+    {
+        $this->assertSame('1.5 MiB', ServerPerformanceRecorder::formatBytes(1572864));
+        $this->assertSame(1572864, ServerPerformanceRecorder::parseBytes('1.5 MiB'));
+        $this->assertSame(134217728, ServerPerformanceRecorder::parseBytes('128M'));
+        $this->assertSame(-1, ServerPerformanceRecorder::parseBytes('-1'));
+    }
+
     public function test_server_performance_recorder_caching(): void
     {
         $sample1 = ServerPerformanceRecorder::sample();

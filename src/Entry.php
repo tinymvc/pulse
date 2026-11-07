@@ -70,7 +70,7 @@ class Entry implements JsonSerializable
      */
     public function duration(?float $duration): static
     {
-        $this->duration = $duration !== null ? round($duration, 2) : null;
+        $this->duration = $duration;
         return $this;
     }
 
@@ -96,7 +96,7 @@ class Entry implements JsonSerializable
     {
         $tags = (array) $tags;
         foreach ($tags as $tag) {
-            if ($tag && !in_array($tag, $this->tags, true)) {
+            if (is_scalar($tag) && (string) $tag !== '' && !in_array((string) $tag, $this->tags, true)) {
                 $this->tags[] = (string) $tag;
             }
         }

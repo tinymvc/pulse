@@ -34,7 +34,14 @@ class Pulse
     /** @var string Current execution trace ID */
     protected static ?string $batchId = null;
 
+    /** @var WeakReference|null Weak reference to the current request for batch ID tracking */
     private static ?WeakReference $batchRequest = null;
+
+    /** @var string|null Batch ID for the current request */
+    private static ?string $requestBatchId = null;
+
+    /** @var list<array{string, string}> Enclosing CLI command or queue execution and its parent batch. */
+    private array $executions = [];
 
     /** @var bool Whether this process is allowed to record */
     protected bool $recording = true;
@@ -99,16 +106,13 @@ class Pulse
         $app = Application::$app;
         if ($app?->isHandlingRequest()) {
             $request = $app->get(Request::class);
-            if (self::$batchRequest?->get() !== $request) {
-                self::$batchRequest = WeakReference::create($request);
-                self::newBatchId();
+            if (self::$batchRequest?->get() === $request && self::$requestBatchId !== null) {
+                return self::$requestBatchId;
             }
+            return self::newBatchId();
         }
 
-        if (self::$batchId === null) {
-            self::$batchId = bin2hex(random_bytes(16));
-        }
-        return self::$batchId;
+        return self::$batchId ??= bin2hex(random_bytes(16));
     }
 
     /**
@@ -118,8 +122,38 @@ class Pulse
      */
     public static function newBatchId(): string
     {
-        self::$batchId = bin2hex(random_bytes(16));
-        return self::$batchId;
+        $batchId = bin2hex(random_bytes(16));
+        $app = Application::$app;
+        if ($app && $app->isHandlingRequest()) {
+            self::$batchRequest = WeakReference::create($app->get(Request::class));
+            return self::$requestBatchId = $batchId;
+        }
+        return self::$batchId = $batchId;
+    }
+
+    /** Synchronous work inside a request stays in its HTTP trace. */
+    public function beginExecution(string $scope, bool $ifMissing = false): void
+    {
+        if (Application::$app?->isHandlingRequest()) {
+            return;
+        }
+
+        $current = end($this->executions);
+        if ($ifMissing && $current && $current[0] === $scope) {
+            return;
+        }
+
+        $this->executions[] = [$scope, self::getBatchId()];
+        self::newBatchId();
+    }
+
+    public function endExecution(string $scope): void
+    {
+        $current = end($this->executions);
+        if (!Application::$app?->isHandlingRequest() && $current && $current[0] === $scope) {
+            array_pop($this->executions);
+            self::$batchId = $current[1];
+        }
     }
 
     /**

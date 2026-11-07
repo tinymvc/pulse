@@ -64,7 +64,7 @@ class ServerPerformanceRecorder
             'disk' => self::sampleDisk(),
             'load' => self::sampleLoad(),
             'runtime' => self::sampleRuntime(),
-            'sampled_at' => gmdate('Y-m-d\TH:i:s.v\Z'),
+            'sampled_at' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z'),
         ];
         self::$cachedAt = $now;
 
@@ -221,7 +221,8 @@ class ServerPerformanceRecorder
         } elseif (is_readable('/proc/cpuinfo')) {
             $cpuinfo = @file_get_contents('/proc/cpuinfo');
             if ($cpuinfo) {
-                return max(1, substr_count($cpuinfo, 'processor'));
+                $cores = preg_match_all('/^processor\s*:\s*\d+/m', $cpuinfo);
+                return $cores ?: null;
             }
         }
         return null;
@@ -240,11 +241,11 @@ class ServerPerformanceRecorder
 
     public static function formatBytes(int|float $bytes, int $precision = 1): string
     {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
         $bytes = max($bytes, 0);
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-        $bytes /= (1 << (10 * $pow));
+        $pow = max(0, min($pow, count($units) - 1));
+        $bytes /= 1024 ** $pow;
 
         return round($bytes, $precision) . ' ' . $units[$pow];
     }
@@ -257,6 +258,9 @@ class ServerPerformanceRecorder
 
     public static function formatDuration(float $milliseconds): string
     {
+        if ($milliseconds > 0 && $milliseconds < 0.001) {
+            return round($milliseconds * 1_000_000) . ' ns';
+        }
         return $milliseconds < 1
             ? round($milliseconds * 1000, 1) . ' µs'
             : round($milliseconds, 2) . ' ms';
@@ -264,14 +268,10 @@ class ServerPerformanceRecorder
 
     public static function parseBytes(string $val): int
     {
-        $val = trim($val);
-        $last = strtolower(substr($val, -1));
-        $val = (int) $val;
-        return match ($last) {
-            'g' => $val * 1024 * 1024 * 1024,
-            'm' => $val * 1024 * 1024,
-            'k' => $val * 1024,
-            default => $val,
-        };
+        if (!preg_match('/^([+-]?\d+(?:\.\d+)?)\s*([kmgt]?)(?:i?b)?$/iD', trim($val), $parts)) {
+            return 0;
+        }
+        $power = array_search(strtolower($parts[2]), ['', 'k', 'm', 'g', 't'], true);
+        return (int) round((float) $parts[1] * (1024 ** $power));
     }
 }

@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use Spark\Console\Commands;
 use Spark\Console\Console;
 use Spark\Facades\App;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Pulse\Pulse;
+use Spark\Pulse\Storage\DatabaseStorage;
 use Tests\TestCase;
 
 class ConsoleCommandsTest extends TestCase
@@ -24,6 +24,17 @@ class ConsoleCommandsTest extends TestCase
         $this->assertStringContainsString('Installing Spark Pulse', $output);
         $this->assertStringContainsString('successfully installed', $output);
         $this->assertFileExists($this->storagePath . '/config/pulse.php');
+        $migrations = glob($this->storagePath . '/database/migrations/*.php');
+        $this->assertSame(['migration_2026_10_30_000000_pulse_entries.php'], array_map('basename', $migrations));
+
+        $migration = require $migrations[0];
+        $migration->up();
+        $storage = new DatabaseStorage();
+        $entry = Entry::make(EntryType::QUERY)->duration(1234.123456);
+        $storage->store($entry);
+        $this->assertSame(1234.123456, $storage->find($entry->id)['duration']);
+        $migration->down();
+
         $this->assertFileExists(views_dir('vendor/pulse/components/detail.blade.php'));
         $view = views_dir('vendor/pulse/dashboard.blade.php');
         file_put_contents($view, 'Published dashboard');

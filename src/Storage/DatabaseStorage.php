@@ -2,6 +2,7 @@
 
 namespace Spark\Pulse\Storage;
 
+use Spark\Database\DB as Connection;
 use Spark\Database\QueryBuilder;
 use Spark\Facades\DB;
 use Spark\Pulse\Contracts\StorageContract;
@@ -21,21 +22,31 @@ use function is_string;
  */
 class DatabaseStorage implements StorageContract
 {
-    /** @var string Table name */
-    private string $table;
+    private static int $activeQueries = 0;
+    private readonly string $table;
+    private readonly ?string $connection;
+    private ?Connection $database = null;
 
-    /** @var string|null Specific database connection */
-    private ?string $connection;
-
-    private ?\Spark\Database\DB $database = null;
-
-    /**
-     * DatabaseStorage constructor.
-     */
     public function __construct(?string $table = null, ?string $connection = null)
     {
         $this->table = $table ?? (string) config('pulse.storage.table', 'pulse_entries');
         $this->connection = $connection ?? config('pulse.storage.connection');
+    }
+
+    public static function isQuerying(): bool
+    {
+        return self::$activeQueries > 0;
+    }
+
+    /** Scope suppression to Pulse's own database calls, including failed queries. */
+    private function runQuery(callable $query): mixed
+    {
+        self::$activeQueries++;
+        try {
+            return $query();
+        } finally {
+            self::$activeQueries--;
+        }
     }
 
     /**
@@ -78,7 +89,7 @@ class DatabaseStorage implements StorageContract
         if (!empty($rows)) {
             try {
                 // Batch insert into the database table
-                $this->query()->insert($rows);
+                $this->runQuery(fn() => $this->query()->insert($rows));
             } catch (\Throwable $e) {
                 // Ensure telemetry write failure never breaks the application
                 tracer_log('Pulse storage write failed: ' . $e->getMessage());
@@ -125,12 +136,12 @@ class DatabaseStorage implements StorageContract
             $builder->where('duration', '>=', $threshold);
         }
 
-        $total = (clone $builder)->count();
+        $total = $this->runQuery(fn() => (clone $builder)->count());
 
-        $rows = $builder->orderBy('created_at', 'DESC')
+        $rows = $this->runQuery(fn() => $builder->orderBy('created_at', 'DESC')
             ->orderBy('id', 'DESC')
             ->limit($limit + 1)
-            ->all();
+            ->all());
 
         $hasMore = count($rows) > $limit;
         if ($hasMore) {
@@ -149,7 +160,7 @@ class DatabaseStorage implements StorageContract
      */
     public function find(string $id): ?array
     {
-        $record = $this->query()->where('id', $id)->first();
+        $record = $this->runQuery(fn() => $this->query()->where('id', $id)->first());
         if (!$record) {
             return null;
         }
@@ -162,11 +173,11 @@ class DatabaseStorage implements StorageContract
      */
     public function getByBatch(string $batchId): array
     {
-        $records = $this->query()
+        $records = $this->runQuery(fn() => $this->query()
             ->where('batch_id', $batchId)
             ->orderBy('created_at', 'ASC')
             ->orderBy('id', 'ASC')
-            ->all();
+            ->all());
 
         return $this->formatRows($records);
     }
@@ -184,7 +195,7 @@ class DatabaseStorage implements StorageContract
             $builder->where('created_at', '>=', $since);
         }
 
-        return (int) $builder->count();
+        return (int) $this->runQuery($builder->count(...));
     }
 
     /**
@@ -200,7 +211,7 @@ class DatabaseStorage implements StorageContract
             $builder->where('created_at', '>=', $since);
         }
 
-        $rows = $builder->all();
+        $rows = $this->runQuery($builder->all(...));
         $counts = array_fill_keys(\Spark\Pulse\EntryType::all(), 0);
         foreach ($rows as $row) {
             $row = (array) $row;
@@ -220,9 +231,7 @@ class DatabaseStorage implements StorageContract
     {
         $cutoff = gmdate('Y-m-d\TH:i:s.000000\Z', time() - ($hours * 3600));
 
-        return (int) $this->query()
-            ->where('created_at', '<', $cutoff)
-            ->delete();
+        return (int) $this->runQuery(fn() => $this->query()->where('created_at', '<', $cutoff)->delete());
     }
 
     /**
@@ -230,7 +239,7 @@ class DatabaseStorage implements StorageContract
      */
     public function clear(): void
     {
-        $this->query()->truncate();
+        $this->runQuery(fn() => $this->query()->truncate());
     }
 
     /**
@@ -242,6 +251,7 @@ class DatabaseStorage implements StorageContract
     protected function formatRow(array|object $row): array
     {
         $row = (array) $row;
+        $row['duration'] = isset($row['duration']) ? (float) $row['duration'] : null;
         $row['content'] = is_string($row['content'] ?? null)
             ? (json_decode($row['content'], true) ?: [])
             : ($row['content'] ?? []);

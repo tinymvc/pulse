@@ -4,7 +4,11 @@ namespace Spark\Pulse\Watchers;
 
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
+use Spark\Pulse\Storage\DatabaseStorage;
 use Spark\Telemetry;
+use function is_array;
+use function is_int;
+use function is_string;
 
 /**
  * Database Query Watcher.
@@ -29,20 +33,22 @@ class QueryWatcher extends Watcher
 
     protected function boot(): void
     {
-        Telemetry::listen('db.queryExecuted', function (string|array $sql, float $time = 0, array|int $bindings = [], int|string $memory = 0, string $connection = 'default') {
-            // Direct DB calls omit bindings; the query builder includes them.
+        Telemetry::listen('db.queryExecuted', function (string|array $sql, ?float $time = null, array|int $bindings = [], int|string|null $memory = null, string $connection = 'default') {
+            $after = memory_get_usage(true);
+            // The query builder supplies bindings before the memory sample. Direct DB calls omit them.
             if (is_array($sql)) {
                 $bindings = $sql['bindings'] ?? [];
-                $time = (float) ($sql['time'] ?? 0);
+                $time = $sql['time'] ?? null;
+                $memory = $sql['memory_before'] ?? null;
                 $connection = $sql['connection'] ?? 'default';
                 $sql = (string) ($sql['query'] ?? '');
             } elseif (is_int($bindings)) {
                 $connection = is_string($memory) ? $memory : 'default';
+                $memory = $bindings;
                 $bindings = [];
             }
 
-            $table = (string) config('pulse.storage.table', 'pulse_entries');
-            if ($sql === '' || str_contains($sql, $table) || !$this->pulse->shouldRecord()) {
+            if ($sql === '' || DatabaseStorage::isQuerying() || !$this->pulse->shouldRecord()) {
                 return;
             }
             if ($this->isExcluded($sql, $connection)) {
@@ -67,7 +73,7 @@ class QueryWatcher extends Watcher
             $isDuplicate = $duplicateCount > 1;
 
             $slowThreshold = (float) config('pulse.slow_thresholds.query', 50);
-            $isSlow = $time >= $slowThreshold;
+            $isSlow = $time !== null && $time >= $slowThreshold;
 
             $tags = [$connection];
             if ($isSlow) {
@@ -81,6 +87,7 @@ class QueryWatcher extends Watcher
                 'sql' => $sql,
                 'bindings' => config('pulse.watchers.queries.record_bindings', false) ? $bindings : [],
                 'duration_ms' => $time,
+                ...$this->allocation(is_int($memory) ? $memory : null, $after),
                 'connection' => $connection,
                 'is_duplicate' => $isDuplicate,
                 'duplicate_count' => $duplicateCount,
@@ -90,7 +97,7 @@ class QueryWatcher extends Watcher
                 ->tags($tags);
 
             $this->record($entry);
-        });
+        }, priority: PHP_INT_MAX);
     }
 
     /**
