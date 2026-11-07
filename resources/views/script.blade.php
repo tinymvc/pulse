@@ -2,12 +2,24 @@
     (() => {
         const root = document.documentElement;
 
-        const clockFields = { hour: 'numeric', minute: '2-digit', second: '2-digit', hourCycle: 'h12' };
+        const clockFields = {
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            hourCycle: 'h12'
+        };
         const clocks = {
             clock: new Intl.DateTimeFormat(undefined, clockFields),
-            trace: new Intl.DateTimeFormat(undefined, { ...clockFields, fractionalSecondDigits: 3 }),
+            trace: new Intl.DateTimeFormat(undefined, {
+                ...clockFields,
+                fractionalSecondDigits: 3
+            }),
             detail: new Intl.DateTimeFormat(undefined, {
-                ...clockFields, year: 'numeric', month: 'short', day: 'numeric', timeZoneName: 'shortOffset'
+                ...clockFields,
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                timeZoneName: 'shortOffset'
             })
         };
         const timeZone = clocks.clock.resolvedOptions().timeZone;
@@ -30,6 +42,20 @@
 
         displayLocalTimes(document);
 
+        // The same navigation is a sidebar on desktop and a native menu on mobile.
+        const navigation = document.getElementById('telemetry-nav');
+        const menuButton = document.querySelector('[popovertarget="telemetry-nav"]');
+        if (navigation && menuButton && 'showPopover' in navigation) {
+            const compact = window.matchMedia('(max-width: 800px)');
+
+            function syncNavigation() {
+                navigation.toggleAttribute('popover', compact.matches);
+                menuButton.hidden = !compact.matches;
+            }
+            syncNavigation();
+            compact.addEventListener('change', syncNavigation);
+        }
+
         /* Theme toggle (works on every page) */
         const themeButton = document.getElementById('theme');
         if (themeButton) {
@@ -42,6 +68,36 @@
                     localStorage.setItem('pulse:theme', next);
                 } catch {}
             });
+        }
+
+        const payload = document.getElementById('payload');
+        if (payload) {
+            const json = payload.textContent;
+            const tokens = /"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/g;
+            const fragment = document.createDocumentFragment();
+            let offset = 0;
+
+            for (const match of json.matchAll(tokens)) {
+                const value = match[0];
+                fragment.append(json.slice(offset, match.index));
+                offset = match.index + value.length;
+
+                let type = 'number';
+                if (value.startsWith('"')) {
+                    type = json[offset] === ':' ? 'key' : 'string';
+                } else if (value === 'null') {
+                    type = 'null';
+                } else if (value === 'true' || value === 'false') {
+                    type = 'boolean';
+                }
+
+                const span = document.createElement('span');
+                span.className = 'json-' + type;
+                span.textContent = value;
+                fragment.append(span);
+            }
+            fragment.append(json.slice(offset));
+            payload.replaceChildren(fragment);
         }
 
         /* Copy-to-clipboard buttons (e.g. entry payload) */

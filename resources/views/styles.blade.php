@@ -151,33 +151,59 @@
      * Shell: sidebar + main
      * ------------------------------------------------------------------ */
     .shell {
+        --rail-width: 232px;
+        --bar-height: 60px;
+        --gutter: clamp(20px, 2vw, 40px);
         display: grid;
-        grid-template-columns: 224px minmax(0, 1fr);
+        grid-template-columns: var(--rail-width) minmax(0, 1fr);
+        grid-template-rows: var(--bar-height) 1fr;
         min-height: 100vh;
+    }
+
+    .workspace-bar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: var(--rail-width) minmax(0, 1fr);
+        height: var(--bar-height);
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+    }
+
+    .brand-cell,
+    .bar-body {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .brand-cell {
+        padding-inline: 22px;
+        border-right: 1px solid var(--line);
+    }
+
+    .bar-body {
+        justify-content: space-between;
+        gap: 12px;
+        padding-inline: var(--gutter);
     }
 
     .rail {
         position: sticky;
-        top: 0;
-        height: 100vh;
-        height: 100dvh;
+        top: var(--bar-height);
+        align-self: start;
+        height: calc(100vh - var(--bar-height));
+        height: calc(100dvh - var(--bar-height));
         overflow-y: auto;
+        overscroll-behavior: contain;
         scrollbar-width: thin;
         scrollbar-color: var(--line-strong) transparent;
-        padding: 0 14px 22px;
-        background: var(--surface);
+        padding: 22px 12px;
         border-right: 1px solid var(--line);
-    }
-
-    .rail-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        min-height: 72px;
-        margin-bottom: 16px;
-        padding-inline: 4px;
-        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
     }
 
     .brand {
@@ -226,30 +252,42 @@
         height: 11px;
     }
 
-    .mobile-nav {
-        display: none;
-    }
-
     .rail h2 {
-        margin: 20px 10px 5px;
-        font: 600 10px/1.5 var(--mono);
-        letter-spacing: .1em;
-        text-transform: uppercase;
+        margin: 22px 10px 6px;
         color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .045em;
+        text-transform: uppercase;
     }
 
     .nav-link {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 10px;
-        min-height: 32px;
+        min-height: 33px;
         padding: 5px 10px;
-        border-radius: 8px;
+        border-radius: 7px;
         color: var(--ink-2);
-        font-size: 13.5px;
+        font-size: 13px;
         text-decoration: none;
         transition: background-color .12s, color .12s;
+    }
+
+    .nav-glyph {
+        flex: none;
+        width: 15px;
+        height: 15px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.35;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        color: var(--muted);
+    }
+
+    .nav-link[aria-current] .nav-glyph {
+        color: var(--accent);
     }
 
     .nav-link:hover {
@@ -265,6 +303,7 @@
 
     .nav-count {
         flex: none;
+        margin-left: auto;
         color: var(--muted);
         font: 500 11.5px/20px var(--mono);
         font-variant-numeric: tabular-nums;
@@ -279,67 +318,44 @@
         font-weight: 600;
     }
 
-    /* The application, deployment, and page share the same content grid. */
     .frame {
-        width: 100%;
-        max-width: 1424px;
-        margin-inline: auto;
-        padding-inline: clamp(20px, 3.5vw, 56px);
-    }
-
-    .masthead {
-        position: relative;
-        isolation: isolate;
-        border-bottom: 1px solid var(--line);
-        background: var(--surface);
-        background: linear-gradient(105deg, var(--surface) 45%, color-mix(in srgb, var(--accent) 6%, var(--surface)));
-    }
-
-    .masthead::before {
-        content: "";
-        position: absolute;
-        z-index: -1;
-        inset: 0;
-        pointer-events: none;
-        color: var(--accent);
-        opacity: .18;
-        background: radial-gradient(circle, currentColor .8px, transparent 1px) 0 0 / 10px 10px;
-        mask-image: linear-gradient(100deg, transparent 40%, #000);
-    }
-
-    .masthead-inner {
-        padding-block: 24px 25px;
+        padding-inline: var(--gutter);
     }
 
     .app-context {
         display: flex;
         align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 15px;
-        color: var(--accent);
+        min-width: 0;
+        gap: 9px;
     }
 
-    .app-context > svg {
+    .app-context>svg {
         flex: none;
+        color: var(--muted);
+    }
+
+    .app-name,
+    .environment {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .app-name {
-        color: var(--ink-2);
+        color: var(--ink);
         font-size: 13px;
-        font-weight: 620;
-        overflow-wrap: anywhere;
+        font-weight: 600;
     }
 
     .environment {
-        max-width: 100%;
+        flex: none;
+        max-width: 14ch;
         padding: 1px 7px;
-        border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+        border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
         border-radius: 5px;
         background: var(--ok-bg);
         color: var(--ok-fg);
         font: 500 10.5px/17px var(--mono);
-        overflow-wrap: anywhere;
     }
 
     .environment.env-prod {
@@ -354,10 +370,10 @@
         width: 32px;
         height: 32px;
         padding: 0;
-        border: 1px solid transparent;
-        border-radius: 8px;
-        background: transparent;
-        color: var(--muted);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--ink-2);
         cursor: pointer;
     }
 
@@ -377,7 +393,9 @@
     }
 
     .content {
-        padding-block: 24px 56px;
+        min-width: 0;
+        scroll-margin-top: var(--bar-height);
+        padding-block: 22px 56px;
     }
 
     .section-head,
@@ -389,11 +407,13 @@
     }
 
     .heading-row {
+        min-height: 34px;
         flex-wrap: wrap;
+        margin-bottom: 20px;
     }
 
     h1 {
-        font-size: clamp(30px, 3.2vw, 40px);
+        font-size: clamp(26px, 2.2vw, 32px);
         font-weight: 650;
         line-height: 1.08;
         letter-spacing: -.045em;
@@ -667,19 +687,30 @@
         font: 11px/1.4 var(--mono);
     }
 
-    .series-requests { color: var(--s-requests); }
-    .series-queries { color: var(--s-queries); }
-    .series-logs { color: var(--s-logs); }
-    .series-other { color: var(--s-other); }
+    .series-requests {
+        color: var(--s-requests);
+    }
 
-    .legend > div,
+    .series-queries {
+        color: var(--s-queries);
+    }
+
+    .series-logs {
+        color: var(--s-logs);
+    }
+
+    .series-other {
+        color: var(--s-other);
+    }
+
+    .legend>div,
     .legend dt,
     .legend dd {
         display: flex;
         align-items: center;
     }
 
-    .legend > div {
+    .legend>div {
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 2px 8px;
@@ -687,7 +718,7 @@
         border-bottom: 1px solid var(--line);
     }
 
-    .legend > div:last-child {
+    .legend>div:last-child {
         border-bottom: 0;
     }
 
@@ -754,12 +785,12 @@
         padding-block: 15px;
     }
 
-    .metrics > div {
+    .metrics>div {
         min-width: 0;
         padding: 0 22px;
     }
 
-    .metrics > div + div {
+    .metrics>div+div {
         border-left: 1px solid var(--line);
     }
 
@@ -1024,6 +1055,26 @@
         tab-size: 2;
     }
 
+    #payload .json-key {
+        color: #93c5fd;
+    }
+
+    #payload .json-string {
+        color: #86e3b0;
+    }
+
+    #payload .json-number {
+        color: #f8c784;
+    }
+
+    #payload .json-boolean {
+        color: #d1b2ff;
+    }
+
+    #payload .json-null {
+        color: #a5b3c3;
+    }
+
     .trace {
         margin-top: 16px;
     }
@@ -1046,7 +1097,7 @@
     .trace li::before {
         content: "";
         position: absolute;
-        left: -4.5px;
+        left: -6.5px;
         top: 1.1rem;
         width: 8px;
         height: 8px;
@@ -1102,7 +1153,7 @@
      * ------------------------------------------------------------------ */
     @media (max-width: 1050px) {
         .shell {
-            grid-template-columns: 200px minmax(0, 1fr);
+            --rail-width: 200px;
         }
 
         .summary-grid {
@@ -1111,77 +1162,61 @@
 
         .activity,
         .runtime,
-        .metrics > div {
+        .metrics>div {
             padding-inline: 16px;
         }
     }
 
     @media (max-width: 800px) {
         .shell {
+            --bar-height: 54px;
+            --gutter: 16px;
             display: block;
+        }
+
+        .workspace-bar {
+            grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .brand-cell {
+            gap: 8px;
+            padding-inline: 12px;
+        }
+
+        .bar-body {
+            padding-inline: 12px;
         }
 
         .rail {
             position: static;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
             height: auto;
-            padding: 10px 16px;
-            overflow: visible;
+            max-height: 40vh;
+            padding: 12px;
             border: 0;
             border-bottom: 1px solid var(--line);
         }
 
-        .rail-head {
-            flex: none;
-            min-height: 0;
+        .rail[popover] {
+            position: fixed;
+            inset: calc(var(--bar-height) + 4px) auto auto 8px;
+            width: min(264px, calc(100vw - 16px));
+            max-height: calc(100dvh - var(--bar-height) - 12px);
             margin: 0;
-            padding: 0;
-            border: 0;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            box-shadow: 0 12px 32px rgb(0 0 0 / .18);
         }
 
-        .rail nav {
-            display: none;
-        }
-
-        .mobile-nav {
-            display: flex;
-            flex: 1;
-            max-width: 178px;
-            align-items: center;
-            gap: 5px;
-            min-width: 0;
-        }
-
-        .mobile-nav select,
-        .mobile-nav button {
-            min-height: 36px;
-            padding: 4px 8px;
-            border: 1px solid var(--line-strong);
-            border-radius: 7px;
-            background: var(--surface);
-            color: var(--ink);
-            font-size: 13px;
-        }
-
-        .mobile-nav select {
-            flex: 1;
-            width: 0;
-            min-width: 0;
-        }
-
-        .frame {
-            padding-inline: 16px;
-        }
-
-        .masthead-inner {
-            padding-block: 18px 20px;
+        .nav-toggle {
+            border-color: transparent;
         }
 
         .content {
-            padding-top: 16px;
+            padding-top: 18px;
+        }
+
+        .heading-row {
+            margin-bottom: 16px;
         }
 
         table {
@@ -1204,6 +1239,35 @@
     }
 
     @media (max-width: 600px) {
+
+        .brand-prefix,
+        .app-context>svg {
+            display: none;
+        }
+
+        .brand {
+            gap: 6px;
+        }
+
+        .signal {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+        }
+
+        .bar-body,
+        .app-context {
+            gap: 6px;
+        }
+
+        .app-context {
+            flex: 1;
+        }
+
+        .environment {
+            max-width: min(20ch, 70%);
+        }
+
         .summary-grid {
             grid-template-columns: 1fr;
             gap: 12px;
@@ -1247,7 +1311,7 @@
             padding-block: 12px;
         }
 
-        .metrics > div {
+        .metrics>div {
             padding-inline: 10px;
         }
 
@@ -1296,6 +1360,24 @@
         .section-head,
         .detail-body {
             padding: 14px;
+        }
+    }
+
+    @media (max-width: 360px) {
+        .app-context {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1px;
+        }
+
+        .app-name,
+        .environment {
+            max-width: 100%;
+        }
+
+        .environment {
+            padding: 0 5px;
+            line-height: 15px;
         }
     }
 
