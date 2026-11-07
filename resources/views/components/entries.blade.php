@@ -1,5 +1,8 @@
-@props(['page', 'overview', 'path', 'filters', 'search'])
+@props(['page', 'overview', 'path', 'filters', 'search', 'tab' => null])
 @use('Spark\Pulse\Entry')
+@use('Spark\Pulse\EntryType')
+@use('Spark\Pulse\Recorders\ServerPerformanceRecorder')
+@php($languageFiles = $tab === EntryType::LANGUAGE_FILE)
 <section class="panel entries" data-live="entries">
     <div class="section-head">
         <h2>{{ $overview ? 'Recent requests' : 'Recorded entries' }}</h2>
@@ -9,10 +12,17 @@
             <span class="count">{{ number_format(count($page['entries'])) }} shown</span>
         @endif
     </div>
+    @if($languageFiles)
+        <p class="allocation-note">A load can show 0 B when PHP reuses memory it already reserved.</p>
+    @endif
     @if(!empty($page['entries']))
         <div class="scroll-table">
             <table>
-                <thead><tr><th>Entry</th><th>{{ $overview ? 'Status' : 'Tags' }}</th><th>Duration</th><th>Time · UTC</th></tr></thead>
+                <thead><tr>
+                    <th>{{ $languageFiles ? 'File' : 'Entry' }}</th>
+                    <th>{{ $languageFiles ? 'PHP allocation change' : ($overview ? 'Status' : 'Tags') }}</th>
+                    <th>{{ $languageFiles ? 'Load time' : 'Duration' }}</th><th>Time · UTC</th>
+                </tr></thead>
                 <tbody>
                     @foreach($page['entries'] as $row)
                         @php
@@ -22,12 +32,17 @@
                         @endphp
                         <tr>
                             <td><a class="row-link" href="{{ $link }}" title="{{ $summary }}">{{ $summary }}</a></td>
-                            <td><div class="tags">
-                                @foreach($tags as $tag)
-                                    <span class="tag">{{ $tag }}</span>
-                                @endforeach
-                            </div></td>
-                            <td class="mono">{{ $row['duration'] !== null ? $row['duration'] . ' ms' : '—' }}</td>
+                            @if($languageFiles)
+                                <td class="mono">{{ isset($row['content']['allocated_change_bytes']) ? ServerPerformanceRecorder::formatByteChange($row['content']['allocated_change_bytes']) : '—' }}</td>
+                                <td class="mono">{{ isset($row['content']['duration_ms']) ? ServerPerformanceRecorder::formatDuration($row['content']['duration_ms']) : '—' }}</td>
+                            @else
+                                <td><div class="tags">
+                                    @foreach($tags as $tag)
+                                        <span class="tag">{{ $tag }}</span>
+                                    @endforeach
+                                </div></td>
+                                <td class="mono">{{ $row['duration'] !== null ? $row['duration'] . ' ms' : '—' }}</td>
+                            @endif
                             <td class="mono"><time datetime="{{ $row['created_at'] }}" title="{{ $row['created_at'] }}">{{ substr($row['created_at'], 11, 8) }}</time></td>
                         </tr>
                     @endforeach

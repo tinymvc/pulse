@@ -25,6 +25,7 @@ final class EntryType
     public const MODEL = 'model';
     public const QUERY = 'query';
     public const VIEW = 'view';
+    public const LANGUAGE_FILE = 'language_file';
     public const PERFORMANCE = 'performance';
 
     /**
@@ -37,7 +38,7 @@ final class EntryType
         return [
             self::REQUEST, self::COMMAND, self::JOB, self::CACHE, self::EVENT,
             self::EXCEPTION, self::GATE, self::HTTP_CLIENT, self::LOG, self::MAIL,
-            self::MODEL, self::QUERY, self::VIEW, self::PERFORMANCE,
+            self::MODEL, self::QUERY, self::VIEW, self::PERFORMANCE, self::LANGUAGE_FILE,
         ];
     }
 
@@ -51,6 +52,7 @@ final class EntryType
                 self::EXCEPTION => 'Exceptions',
                 self::LOG => 'Logs',
                 self::VIEW => 'Views',
+                self::LANGUAGE_FILE => 'Language files',
                 self::MODEL => 'Models',
             ],
             'Execution' => [
@@ -88,6 +90,7 @@ final class EntryType
             'logs' => self::LOG,
             'queries' => self::QUERY,
             'views' => self::VIEW,
+            'language_files' => self::LANGUAGE_FILE,
             'models' => self::MODEL,
             'http', 'http_clients', 'httpclient' => self::HTTP_CLIENT,
             default => $type,

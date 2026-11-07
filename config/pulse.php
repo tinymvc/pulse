@@ -101,6 +101,9 @@ return [
         'views' => [
             'enabled' => true,
         ],
+        'language_files' => [
+            'enabled' => true,
+        ],
         'performance' => [
             'enabled' => true,
             'sample_rate' => 1,

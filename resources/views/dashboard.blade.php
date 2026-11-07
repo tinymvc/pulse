@@ -10,7 +10,7 @@
 </head>
 <body>
     <a href="#main" class="skip">Skip to activity</a>
-    @include('pulse::workspace', compact('tab', 'overview', 'groups', 'counts', 'server', 'entry', 'trace', 'page', 'search', 'path', 'filters', 'recording'))
+    @include('pulse::workspace', compact('tab', 'overview', 'groups', 'counts', 'server', 'entry', 'trace', 'languageLoads', 'page', 'search', 'path', 'filters', 'recording'))
     <p class="notice" id="notice" role="status" hidden></p>
     @include('pulse::script')
 </body>

@@ -84,6 +84,7 @@
     .text-link { text-decoration: none; }
     .text-link:hover, .trace a:hover { text-decoration: underline; }
     .text-link span { margin-left: 4px; }
+    .allocation-note { padding: 8px 22px; color: var(--muted); font-size: 12px; }
     .scroll-table { overflow-x: auto; }
     table { border-collapse: collapse; width: 100%; font-size: 13px; table-layout: fixed; }
     th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); background: #f8faf7; }

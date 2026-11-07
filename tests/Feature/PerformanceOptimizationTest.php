@@ -49,7 +49,8 @@ class PerformanceOptimizationTest extends TestCase
         $counts = $storage->counts();
 
         $this->assertIsArray($counts);
-        $this->assertCount(14, $counts);
+        $this->assertCount(count(EntryType::all()), $counts);
+        $this->assertSame(0, $counts[EntryType::LANGUAGE_FILE]);
         $this->assertSame(2, $counts[EntryType::REQUEST]);
         $this->assertSame(1, $counts[EntryType::LOG]);
         $this->assertSame(1, $counts[EntryType::QUERY]);

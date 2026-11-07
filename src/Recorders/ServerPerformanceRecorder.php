@@ -249,6 +249,19 @@ class ServerPerformanceRecorder
         return round($bytes, $precision) . ' ' . $units[$pow];
     }
 
+    public static function formatByteChange(int $bytes): string
+    {
+        $sign = $bytes < 0 ? '−' : ($bytes > 0 ? '+' : '');
+        return $sign . self::formatBytes(abs($bytes));
+    }
+
+    public static function formatDuration(float $milliseconds): string
+    {
+        return $milliseconds < 1
+            ? round($milliseconds * 1000, 1) . ' µs'
+            : round($milliseconds, 2) . ' ms';
+    }
+
     public static function parseBytes(string $val): int
     {
         $val = trim($val);

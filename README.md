@@ -27,6 +27,8 @@ php spark migrate
 
 Visit a route in your application, then open **`/pulse`**. Select an entry to inspect its payload and execution trace. Live updates refresh the overview and lists every five seconds.
 
+Open **Language files** to see which translation files Spark loaded and how long each load took. Request details count the loads, link to the largest observed allocation increase, and show each file in the trace. **PHP allocation change** measures the change in memory reserved by PHP from immediately before the include to the Pulse listener. A load can show 0 B when PHP reuses reserved memory. Cached lookups produce no additional entry. Set `watchers.language_files.enabled` to `false` to disable this watcher.
+
 ## Configuration
 
 Edit `config/pulse.php` to enable individual watchers, ignore paths or commands, and adjust slow-operation thresholds. The dashboard excludes its own requests. To customize its Blade templates, run `php spark pulse:install --views` and edit `resources/views/vendor/pulse`. The installer preserves existing files.

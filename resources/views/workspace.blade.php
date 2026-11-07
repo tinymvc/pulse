@@ -59,7 +59,7 @@
             </div>
 
             @if($entry)
-                <x-pulse::detail :$entry :$trace :$labels :$path :$filters />
+                <x-pulse::detail :$entry :$trace :$languageLoads :$labels :$path :$filters />
             @else
                 @if($overview)
                     <x-pulse::overview :$counts :$server :$path />
@@ -76,7 +76,7 @@
                         </div>
                     </form>
                 @endif
-                <x-pulse::entries :$page :$overview :$path :$filters :$search />
+                <x-pulse::entries :$tab :$page :$overview :$path :$filters :$search />
             @endif
         </div>
     </main>

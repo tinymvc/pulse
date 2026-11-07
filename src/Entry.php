@@ -138,6 +138,7 @@ class Entry implements JsonSerializable
             EntryType::LOG => $c['message'] ?? 'Log entry',
             EntryType::MAIL => $c['subject'] ?? 'Mail',
             EntryType::MODEL => ($c['action'] ?? '') . ' ' . ($c['model'] ?? 'Model'),
+            EntryType::LANGUAGE_FILE => $c['path'] ?? 'Language file',
             EntryType::VIEW => $c['template'] ?? $c['path'] ?? 'View',
             EntryType::PERFORMANCE => 'Server snapshot',
             default => $entry['type'],

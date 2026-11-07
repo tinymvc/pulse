@@ -51,6 +51,7 @@ class DashboardController
             'recording' => $pulse->isRecording(),
             'entry' => $entry,
             'trace' => $trace,
+            'languageLoads' => ($entry['type'] ?? null) === EntryType::REQUEST ? $this->languageLoads($trace) : [],
             'page' => $page,
             'search' => $search,
             'path' => route_url('pulse.dashboard'),
@@ -58,5 +59,22 @@ class DashboardController
         ];
 
         return view($request->header('X-Pulse-Refresh') === '1' ? 'pulse::workspace' : 'pulse::dashboard', $data);
+    }
+
+    /** Summarize the files in this execution using its already-loaded trace. */
+    private function languageLoads(array $trace): array
+    {
+        $count = 0;
+        $largest = null;
+        foreach ($trace as $step) {
+            if ($step['type'] !== EntryType::LANGUAGE_FILE) {
+                continue;
+            }
+            $count++;
+            if (($step['content']['allocated_change_bytes'] ?? 0) > ($largest['content']['allocated_change_bytes'] ?? 0)) {
+                $largest = $step;
+            }
+        }
+        return ['count' => $count, 'largest' => $largest];
     }
 }

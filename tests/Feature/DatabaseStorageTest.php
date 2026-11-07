@@ -49,7 +49,8 @@ class DatabaseStorageTest extends TestCase
         $this->assertIsArray($counts);
         $this->assertSame(2, $counts[EntryType::REQUEST]);
         $this->assertSame(0, $counts[EntryType::QUERY]);
-        $this->assertCount(14, $counts);
+        $this->assertCount(count(EntryType::all()), $counts);
+        $this->assertSame(0, $counts[EntryType::LANGUAGE_FILE]);
 
         // Test find
         $found = $storage->find($entry1->id);

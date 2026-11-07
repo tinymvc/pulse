@@ -18,6 +18,7 @@ use Spark\Pulse\Watchers\ExceptionWatcher;
 use Spark\Pulse\Watchers\GateWatcher;
 use Spark\Pulse\Watchers\HttpClientWatcher;
 use Spark\Pulse\Watchers\JobWatcher;
+use Spark\Pulse\Watchers\LanguageFileWatcher;
 use Spark\Pulse\Watchers\LogWatcher;
 use Spark\Pulse\Watchers\MailWatcher;
 use Spark\Pulse\Watchers\ModelWatcher;
@@ -38,7 +39,7 @@ use Spark\Telemetry;
  */
 class PulseServiceProvider extends ServiceProvider
 {
-    /** @var array<class-string> All 14 Telemetry Watchers */
+    /** @var array<class-string<Watcher>> */
     protected array $watchers = [
         RequestWatcher::class,
         CommandWatcher::class,
@@ -53,6 +54,7 @@ class PulseServiceProvider extends ServiceProvider
         ModelWatcher::class,
         QueryWatcher::class,
         ViewWatcher::class,
+        LanguageFileWatcher::class,
         PerformanceWatcher::class,
     ];
 
