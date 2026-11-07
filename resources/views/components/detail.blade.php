@@ -4,8 +4,8 @@
 @use('Spark\Pulse\Recorders\ServerPerformanceRecorder')
 <section class="panel detail">
     <div class="section-head">
-        <h2>{{ $labels[$entry['type']] ?? $entry['type'] }}</h2><time class="mono"
-            datetime="{{ $entry['created_at'] }}">{{ substr($entry['created_at'], 0, 10) }} ·
+        <h2>{{ $labels[$entry['type']] ?? $entry['type'] }}</h2>
+        <time class="mono count" datetime="{{ $entry['created_at'] }}">{{ substr($entry['created_at'], 0, 10) }} ·
             {{ substr($entry['created_at'], 11, 8) }} UTC</time>
     </div>
     <div class="detail-body">
@@ -52,8 +52,11 @@
                 <dd>{{ $entry['batch_id'] }}</dd>
             </div>
         </dl>
-        <h4>Payload</h4>
-        <pre tabindex="0">{{ json_encode($entry['content'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) }}</pre>
+        <div class="payload-head">
+            <h4>Payload</h4>
+            <button type="button" class="control small" data-copy="#payload">Copy</button>
+        </div>
+        <pre id="payload" tabindex="0">{{ json_encode($entry['content'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) }}</pre>
     </div>
 </section>
 <section class="panel trace">

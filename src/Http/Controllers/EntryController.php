@@ -6,6 +6,7 @@ use Spark\Http\Request;
 use Spark\Http\Response;
 use Spark\Pulse\EntryType;
 use Spark\Pulse\Pulse;
+use function is_string;
 
 /**
  * Pulse Entry API Controller.

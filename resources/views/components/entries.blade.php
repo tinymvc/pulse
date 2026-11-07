@@ -2,12 +2,22 @@
 @use('Spark\Pulse\Entry')
 @use('Spark\Pulse\EntryType')
 @use('Spark\Pulse\Recorders\ServerPerformanceRecorder')
-@php($languageFiles = $tab === EntryType::LANGUAGE_FILE)
+@php
+    $languageFiles = $tab === EntryType::LANGUAGE_FILE;
+    $statusClass = fn($status) => match (true) {
+        !is_numeric($status) => '',
+        (int) $status >= 500 => 'tag-err',
+        (int) $status >= 400 => 'tag-warn',
+        (int) $status >= 300 => 'tag-info',
+        default => 'tag-ok',
+    };
+@endphp
 <section class="panel entries" data-live="entries">
     <div class="section-head">
         <h2>{{ $overview ? 'Recent requests' : 'Recorded entries' }}</h2>
         @if ($overview)
-            <a class="text-link" href="{{ $path }}?tab=request">All requests <span aria-hidden="true">↗</span></a>
+            <a class="text-link" href="{{ $path }}?tab=request">View all requests <span
+                    aria-hidden="true">→</span></a>
         @else
             <span class="count">{{ number_format(count($page['entries'])) }} shown</span>
         @endif
@@ -23,7 +33,7 @@
                         <th>{{ $languageFiles ? 'File' : 'Entry' }}</th>
                         <th>{{ $languageFiles ? 'PHP allocation change' : ($overview ? 'Status' : 'Tags') }}</th>
                         <th>{{ $languageFiles ? 'Load time' : 'Duration' }}</th>
-                        <th>Time · UTC</th>
+                        <th>Time (UTC)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,7 +57,8 @@
                                 <td>
                                     <div class="tags">
                                         @foreach ($tags as $tag)
-                                            <span class="tag">{{ $tag }}</span>
+                                            <span
+                                                class="tag {{ $overview ? $statusClass($tag) : '' }}">{{ $tag }}</span>
                                         @endforeach
                                     </div>
                                 </td>
@@ -74,13 +85,13 @@
     @if (!$overview && ($page['has_more'] || isset($filters['before'])))
         <div class="pager">
             @if (isset($filters['before']))
-                <a
+                <a class="control"
                     href="{{ $path . '?' . http_build_query(array_diff_key($filters, ['before' => true, 'before_id' => true])) }}">←
                     Newest entries</a>
             @endif
             @if ($page['has_more'])
                 @php($last = $page['entries'][array_key_last($page['entries'])])
-                <a
+                <a class="control"
                     href="{{ $path . '?' . http_build_query(array_merge($filters, ['before' => $last['created_at'], 'before_id' => $last['id']])) }}">Older
                     entries →</a>
             @endif

@@ -2,6 +2,7 @@
 
 namespace Spark\Pulse\Http\Controllers;
 
+use Spark\Facades\Blade;
 use Spark\Http\Request;
 use Spark\Http\Response;
 use Spark\Pulse\EntryType;
@@ -14,7 +15,11 @@ class DashboardController
     {
         // Spark creates a fresh Blade instance when handling another request.
         $published = views_dir('vendor/pulse');
-        blade()->usePath(is_file("$published/dashboard.blade.php") ? $published : dirname(__DIR__, 3) . '/resources/views', 'pulse');
+
+        Blade::usePath(
+            is_file("$published/dashboard.blade.php") ? $published : dirname(__DIR__, 3) . '/resources/views',
+            'pulse'
+        );
 
         $query = array_filter($request->query->all(), 'is_string');
         $type = EntryType::normalize($query['tab'] ?? '');
@@ -39,6 +44,7 @@ class DashboardController
             }
             $trace = $storage->getByBatch($entry['batch_id']);
         }
+
         $page = $entry ? null : $storage->get($overview ? EntryType::REQUEST : $tab, $options);
         $data = [
             'tab' => $tab,

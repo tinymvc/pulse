@@ -1,6 +1,8 @@
 @php
     $labels = array_merge(...array_values($groups));
     $title = $entry ? 'Entry details' : ($overview ? 'Overview' : $labels[$tab]);
+    $env = (string) $server['runtime']['app_env'];
+    $envClass = in_array(strtolower($env), ['production', 'prod'], true) ? 'env-prod' : '';
 @endphp
 <div class="shell">
     <aside class="rail">
@@ -18,7 +20,8 @@
                 @foreach ($items as $type => $label)
                     <a class="nav-link" href="{{ $path }}?tab={{ $type }}"
                         @if ($tab === $type) aria-current="page" @endif>
-                        <span>{{ $label }}</span><span class="nav-count"
+                        <span>{{ $label }}</span>
+                        <span class="nav-count"
                             data-live="count-{{ $type }}">{{ number_format($counts[$type] ?? 0) }}</span>
                     </a>
                 @endforeach
@@ -43,8 +46,27 @@
         <header class="topbar">
             <span class="app-name"><span class="app-icon"
                     aria-hidden="true">⌘</span>{{ config('app.name', 'Spark') }}</span>
-            <span class="separator">/</span><span>Observability</span>
-            <span class="environment">{{ $server['runtime']['app_env'] }}</span>
+            <span class="crumbs">
+                <span class="separator" aria-hidden="true">/</span>
+                <span>Observability</span>
+                <span class="separator" aria-hidden="true">/</span>
+                <span class="crumb-current">{{ $title }}</span>
+            </span>
+            <span class="environment {{ $envClass }}">{{ $env }}</span>
+            <button type="button" class="icon-button" id="theme" aria-label="Toggle dark mode"
+                title="Toggle dark mode">
+                <svg class="icon-moon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                    <path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7Z" fill="none" stroke="currentColor"
+                        stroke-width="1.5" stroke-linejoin="round" />
+                </svg>
+                <svg class="icon-sun" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                    <circle cx="8" cy="8" r="3" fill="none" stroke="currentColor"
+                        stroke-width="1.5" />
+                    <path
+                        d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+            </button>
         </header>
         <div class="content">
             <p class="paused" data-live="recording" @if ($recording) hidden @endif>Recording is paused.
@@ -61,7 +83,7 @@
                     <div class="actions" hidden data-tools>
                         <button type="button" class="control live" id="refresh" aria-pressed="true"><span
                                 class="dot"></span><span id="refresh-label">Live updates</span></button>
-                        <button type="button" class="control" id="clear"
+                        <button type="button" class="control danger" id="clear"
                             data-url="{{ route_url('pulse.api.clear') }}">Clear entries</button>
                     </div>
                 @endif
@@ -77,8 +99,17 @@
                         <input type="hidden" name="tab" value="{{ $tab }}">
                         <label for="search">Search {{ strtolower($labels[$tab]) }}</label>
                         <div class="search-box">
-                            <input type="search" name="search" id="search" value="{{ $search }}"
-                                placeholder="Search recorded content">
+                            <div class="search-field">
+                                <svg class="search-icon" viewBox="0 0 16 16" width="14" height="14"
+                                    aria-hidden="true">
+                                    <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor"
+                                        stroke-width="1.5" />
+                                    <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" />
+                                </svg>
+                                <input type="search" name="search" id="search" value="{{ $search }}"
+                                    placeholder="Search recorded content">
+                            </div>
                             <button class="control" type="submit">Search</button>
                             @if ($search !== '')
                                 <a href="{{ $path }}?tab={{ $tab }}">Reset</a>

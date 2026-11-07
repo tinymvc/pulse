@@ -1,5 +1,39 @@
 <script>
     (() => {
+        const root = document.documentElement;
+
+        /* Theme toggle (works on every page) */
+        const themeButton = document.getElementById('theme');
+        if (themeButton) {
+            themeButton.setAttribute('aria-pressed', String(root.dataset.theme === 'dark'));
+            themeButton.addEventListener('click', () => {
+                const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+                root.dataset.theme = next;
+                themeButton.setAttribute('aria-pressed', String(next === 'dark'));
+                try {
+                    localStorage.setItem('pulse:theme', next);
+                } catch {}
+            });
+        }
+
+        /* Copy-to-clipboard buttons (e.g. entry payload) */
+        document.addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-copy]');
+            const target = button && document.querySelector(button.dataset.copy);
+            if (!target) return;
+            const original = button.textContent;
+            try {
+                await navigator.clipboard.writeText(target.textContent);
+                button.textContent = 'Copied';
+            } catch {
+                button.textContent = 'Copy failed';
+            }
+            window.setTimeout(() => {
+                button.textContent = original;
+            }, 1600);
+        });
+
+        /* Live refresh + clear (list and overview pages only) */
         const toggle = document.getElementById('refresh');
         if (!toggle) return;
 
@@ -63,7 +97,7 @@
             else controller?.abort();
         });
 
-        clear.addEventListener('click', async () => {
+        clear?.addEventListener('click', async () => {
             if (!window.confirm('Clear all recorded Pulse entries? This cannot be undone.')) return;
             clearing = true;
             clear.disabled = true;
@@ -87,7 +121,8 @@
         });
 
         updateToggle();
-        document.querySelector('[data-tools]').hidden = false;
+        const tools = document.querySelector('[data-tools]');
+        if (tools) tools.hidden = false;
         window.setInterval(refresh, 5000);
         document.addEventListener('visibilitychange', refresh);
     })();

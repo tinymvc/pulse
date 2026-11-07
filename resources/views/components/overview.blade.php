@@ -7,6 +7,8 @@
         'Logs' => $counts['log'],
         'Other' => $total - $counts['request'] - $counts['query'] - $counts['log'],
     ];
+    $disk = $server['disk']['usage_percent'] ?? null;
+    $diskLevel = $disk === null ? '' : ($disk >= 95 ? 'crit' : ($disk >= 85 ? 'warn' : ''));
 @endphp
 <section class="summary-grid" aria-label="Telemetry summary" data-live="summary">
     <div class="activity panel">
@@ -22,7 +24,8 @@
             @foreach ($distribution as $label => $count)
                 <div>
                     <dt><i class="series-{{ strtolower($label) }}"></i>{{ $label }}</dt>
-                    <dd>{{ number_format($count) }}</dd>
+                    <dd>{{ number_format($count) }}<span>{{ $total ? round((100 * $count) / $total) : 0 }}%</span>
+                    </dd>
                 </div>
             @endforeach
         </dl>
@@ -47,16 +50,22 @@
 </section>
 <section class="metrics" aria-label="Server metrics" data-live="metrics">
     <div>
-        <h2>PHP memory</h2><strong>{{ $server['memory']['app_formatted'] }}</strong><small>Peak
-            {{ $server['memory']['app_peak_formatted'] }}</small>
+        <h2>PHP memory</h2>
+        <strong>{{ $server['memory']['app_formatted'] }}</strong>
+        <small>Peak {{ $server['memory']['app_peak_formatted'] }}</small>
     </div>
     <div>
         <h2>Storage used</h2>
-        <strong>{{ isset($server['disk']['usage_percent']) ? $server['disk']['usage_percent'] . '%' : '—' }}</strong><small>{{ isset($server['disk']['free_formatted']) ? $server['disk']['free_formatted'] . ' available' : 'Unavailable' }}</small>
+        <strong>{{ $disk !== null ? $disk . '%' : '—' }}</strong>
+        @if ($disk !== null)
+            <span class="meter {{ $diskLevel }}" aria-hidden="true"><i
+                    style="width: {{ min(100, max(0, $disk)) }}%"></i></span>
+        @endif
+        <small>{{ isset($server['disk']['free_formatted']) ? $server['disk']['free_formatted'] . ' available' : 'Unavailable' }}</small>
     </div>
     <div>
         <h2>Load average</h2>
-        <strong>{{ isset($server['load']['1m']) ? number_format($server['load']['1m'], 2) : '—' }}</strong><small>Over
-            the last minute</small>
+        <strong>{{ isset($server['load']['1m']) ? number_format($server['load']['1m'], 2) : '—' }}</strong>
+        <small>Over the last minute</small>
     </div>
 </section>

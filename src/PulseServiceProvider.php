@@ -70,10 +70,12 @@ class PulseServiceProvider extends ServiceProvider
             $config[$list] = $configured[$list] ?? $defaults[$list];
         }
         $config['sensitive_keys'] = array_unique([...$defaults['sensitive_keys'], ...($configured['sensitive_keys'] ?? [])]);
-        $this->app->setConfig('pulse', $config);
-        Watcher::resetSensitiveMap();
-        $this->app->singleton(Pulse::class, fn() => new Pulse());
 
+        $this->app->setConfig('pulse', $config);
+
+        Watcher::resetSensitiveMap();
+
+        $this->app->singleton(Pulse::class, fn() => new Pulse());
         $this->app->alias('pulse', Pulse::class);
     }
 
@@ -105,15 +107,16 @@ class PulseServiceProvider extends ServiceProvider
         });
 
         $pulse = $this->app->get(Pulse::class);
+
         Pulse::newBatchId();
-        $newBatch = static function (): void {
-            Pulse::newBatchId();
-        };
+        $newBatch = Pulse::newBatchId(...);
+
         Telemetry::listen('command.starting', $newBatch);
         Telemetry::listen('job.processing', $newBatch);
         // A queue worker may stay alive indefinitely after a short job.
         Telemetry::listen('job.processed', $pulse->flush(...), -100);
         Telemetry::listen('job.failed', $pulse->flush(...), -100);
+
         foreach ($this->watchers as $watcherClass) {
             (new $watcherClass())->register($pulse);
         }
