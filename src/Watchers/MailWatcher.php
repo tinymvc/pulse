@@ -26,6 +26,9 @@ class MailWatcher extends Watcher
         Telemetry::listen('mail.sent', function (array $payload) {
             $to = (array) ($payload['to'] ?? []);
             $subject = (string) ($payload['subject'] ?? '(no subject)');
+            if ($this->isExcluded($subject, ...array_values(array_filter($to, 'is_string')))) {
+                return;
+            }
 
             $entry = Entry::make(EntryType::MAIL, [
                 'status' => 'sent',
@@ -46,6 +49,9 @@ class MailWatcher extends Watcher
         Telemetry::listen('mail.failed', function (array $payload) {
             $to = (array) ($payload['to'] ?? []);
             $subject = (string) ($payload['subject'] ?? '(no subject)');
+            if ($this->isExcluded($subject, ...array_values(array_filter($to, 'is_string')))) {
+                return;
+            }
 
             $entry = Entry::make(EntryType::MAIL, [
                 'status' => 'failed',

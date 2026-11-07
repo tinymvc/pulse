@@ -4,6 +4,7 @@ namespace Spark\Pulse\Watchers;
 
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
+use Spark\Support\Str;
 use Spark\Telemetry;
 use function array_slice;
 use function count;
@@ -28,6 +29,10 @@ class CacheWatcher extends Watcher
     {
         Telemetry::listen('cache.hit', function (array $payload) {
             $key = (string) ($payload['key'] ?? '');
+            if ($this->isExcluded($key)) {
+                return;
+            }
+
             $entry = Entry::make(EntryType::CACHE, [
                 'action' => 'hit',
                 'key' => $key,
@@ -41,6 +46,10 @@ class CacheWatcher extends Watcher
 
         Telemetry::listen('cache.miss', function (array $payload) {
             $key = (string) ($payload['key'] ?? '');
+            if ($this->isExcluded($key)) {
+                return;
+            }
+
             $entry = Entry::make(EntryType::CACHE, [
                 'action' => 'miss',
                 'key' => $key,
@@ -53,6 +62,10 @@ class CacheWatcher extends Watcher
 
         Telemetry::listen('cache.written', function (array $payload) {
             $key = (string) ($payload['key'] ?? '');
+            if ($this->isExcluded($key)) {
+                return;
+            }
+
             $entry = Entry::make(EntryType::CACHE, [
                 'action' => 'written',
                 'key' => $key,
@@ -67,6 +80,14 @@ class CacheWatcher extends Watcher
 
         Telemetry::listen('cache.forgotten', function (array $payload) {
             $keys = (array) ($payload['keys'] ?? []);
+            $patterns = $this->exclusionPatterns();
+            if ($patterns !== []) {
+                $keys = array_values(array_filter($keys, fn($key) => !Str::is($patterns, $key)));
+                if ($keys === []) {
+                    return;
+                }
+            }
+
             $entry = Entry::make(EntryType::CACHE, [
                 'action' => 'forgotten',
                 'keys' => $keys,

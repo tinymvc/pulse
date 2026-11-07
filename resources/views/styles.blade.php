@@ -383,6 +383,72 @@
         color: var(--ink);
     }
 
+    .bar-actions,
+    .entry-actions {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .bar-actions {
+        padding: 2px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--surface);
+    }
+
+    .entry-actions {
+        padding-right: 5px;
+        margin-right: 2px;
+        border-right: 1px solid var(--line);
+    }
+
+    .bar-actions .icon-button {
+        position: relative;
+        border: 0;
+        border-radius: 6px;
+    }
+
+    #refresh[aria-pressed="true"] {
+        background: var(--accent-soft);
+        color: var(--accent-ink);
+    }
+
+    #refresh[aria-pressed="true"] .paused-signal,
+    #refresh[aria-pressed="false"] .live-signal {
+        display: none;
+    }
+
+    #clear:is(:hover, :focus-visible) {
+        background: var(--err-bg);
+        color: var(--err-fg);
+    }
+
+    #clear:disabled {
+        opacity: .5;
+        cursor: wait;
+    }
+
+    .bar-actions [data-tip]:not([data-tip-dismissed]):is(:hover, :focus-visible)::after {
+        content: attr(data-tip);
+        position: absolute;
+        top: 100%;
+        right: 0;
+        padding: 5px 9px;
+        border-top: 6px solid transparent;
+        border-radius: 10px 10px 6px 6px;
+        background: var(--ink);
+        background-clip: padding-box;
+        color: var(--bg);
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.4;
+        white-space: nowrap;
+        z-index: 1;
+    }
+
     .icon-sun,
     :root[data-theme="dark"] .icon-moon {
         display: none;
@@ -398,17 +464,15 @@
         padding-block: 22px 56px;
     }
 
-    .section-head,
-    .heading-row {
+    .section-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
     }
 
-    .heading-row {
+    .page-heading {
         min-height: 34px;
-        flex-wrap: wrap;
         margin-bottom: 20px;
     }
 
@@ -419,7 +483,7 @@
         letter-spacing: -.045em;
     }
 
-    .heading-row p,
+    .page-heading p,
     .back {
         display: block;
         margin-top: 6px;
@@ -448,7 +512,6 @@
     /* ------------------------------------------------------------------
      * Controls
      * ------------------------------------------------------------------ */
-    .actions,
     .search-box {
         display: flex;
         align-items: center;
@@ -483,57 +546,10 @@
         cursor: not-allowed;
     }
 
-    .control.danger:hover {
-        background: var(--err-bg);
-        border-color: color-mix(in srgb, var(--err-fg) 35%, var(--line-strong));
-        color: var(--err-fg);
-    }
-
     .control.small {
         min-height: 28px;
         padding: 3px 10px;
         font-size: 12px;
-    }
-
-    .live {
-        min-width: 122px;
-        justify-content: center;
-    }
-
-    .live[aria-pressed="true"] {
-        border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
-        background: var(--accent-soft);
-        color: var(--accent-ink);
-    }
-
-    .control.danger {
-        border-color: transparent;
-        background: transparent;
-        box-shadow: none;
-        color: var(--muted);
-    }
-
-    .dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--faint);
-    }
-
-    .live[aria-pressed="true"] .dot {
-        background: var(--accent);
-        animation: ping 2s ease-out infinite;
-    }
-
-    @keyframes ping {
-        0% {
-            box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
-        }
-
-        70%,
-        100% {
-            box-shadow: 0 0 0 6px transparent;
-        }
     }
 
     .text-link,
@@ -1215,7 +1231,7 @@
             padding-top: 18px;
         }
 
-        .heading-row {
+        .page-heading {
             margin-bottom: 16px;
         }
 
@@ -1363,7 +1379,7 @@
         }
     }
 
-    @media (max-width: 360px) {
+    @media (max-width: 480px) {
         .app-context {
             flex-direction: column;
             align-items: flex-start;
@@ -1378,6 +1394,21 @@
         .environment {
             padding: 0 5px;
             line-height: 15px;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .brand-cell {
+            padding-inline: 8px;
+            gap: 4px;
+        }
+
+        .bar-body {
+            padding-inline: 8px;
+        }
+
+        .brand>span:last-child {
+            display: none;
         }
     }
 

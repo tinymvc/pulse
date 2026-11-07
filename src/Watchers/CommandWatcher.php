@@ -26,7 +26,7 @@ class CommandWatcher extends Watcher
     {
         Telemetry::listen('command.finished', function (array $payload) {
             $name = (string) ($payload['name'] ?? '');
-            if ($name === '') {
+            if ($name === '' || $this->isExcluded($name)) {
                 return;
             }
 
@@ -47,8 +47,8 @@ class CommandWatcher extends Watcher
                 'exit_code' => $exitCode,
                 'duration_ms' => $duration,
             ])
-            ->duration($duration)
-            ->tags($tags);
+                ->duration($duration)
+                ->tags($tags);
 
             $this->record($entry);
         });

@@ -5,6 +5,7 @@ namespace Spark\Pulse\Watchers;
 use Spark\Pulse\Contracts\WatcherContract;
 use Spark\Pulse\Entry;
 use Spark\Pulse\Pulse;
+use Spark\Support\Str;
 use function is_array;
 
 /**
@@ -54,6 +55,33 @@ abstract class Watcher implements WatcherContract
     public function isEnabled(): bool
     {
         return (bool) config("pulse.watchers.{$this->key}.enabled", true);
+    }
+
+    /** @return string[] */
+    protected function exclusionPatterns(): array
+    {
+        return array_filter((array) config("pulse.watchers.{$this->key}.exclude", []), 'is_string');
+    }
+
+    /** Match any of this watcher's identifiers against its configured patterns. */
+    protected function isExcluded(string ...$identifiers): bool
+    {
+        $patterns = $this->exclusionPatterns();
+        if ($patterns === []) {
+            return false;
+        }
+
+        foreach ($identifiers as $identifier) {
+            if (Str::is($patterns, $identifier)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected function isPathExcluded(string $path): bool
+    {
+        return $this->isExcluded($path, ltrim($path, '/'));
     }
 
     /**

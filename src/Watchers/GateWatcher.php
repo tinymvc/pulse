@@ -28,6 +28,10 @@ class GateWatcher extends Watcher
     {
         Telemetry::listen('gate.checked', function (array $payload) {
             $ability = (string) ($payload['ability'] ?? '');
+            if ($this->isExcluded($ability)) {
+                return;
+            }
+
             $result = (bool) ($payload['result'] ?? false);
             $user = $payload['user'] ?? null;
 

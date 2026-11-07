@@ -24,8 +24,13 @@ class LanguageFileWatcher extends Watcher
 
             $root = root_dir() . DIRECTORY_SEPARATOR;
             $path = str_starts_with($file, $root) ? substr($file, strlen($root)) : $file;
+            $path = str_replace(DIRECTORY_SEPARATOR, '/', $path);
+            if ($this->isExcluded($path)) {
+                return;
+            }
+
             $entry = Entry::make(EntryType::LANGUAGE_FILE, [
-                'path' => str_replace(DIRECTORY_SEPARATOR, '/', $path),
+                'path' => $path,
                 'duration_ms' => $duration,
                 'allocated_before_bytes' => $memoryBefore,
                 'allocated_after_bytes' => $memoryAfter,

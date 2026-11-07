@@ -23,12 +23,7 @@ class HttpClientWatcher extends Watcher
 
     protected function boot(): void
     {
-        Telemetry::listen('http.request', function (
-            string|array $url,
-            array $req = [],
-            array $resp = [],
-            float $duration = 0.0
-        ) {
+        Telemetry::listen('http.request', function (string|array $url, array $req = [], array $resp = [], float $duration = 0.0) {
             if (is_array($url)) {
                 $req = $url['payload'] ?? [];
                 $resp = $url['response'] ?? [];
@@ -45,6 +40,10 @@ class HttpClientWatcher extends Watcher
                 $authority .= ':' . $parsedUrl['port'];
             }
             $url = $authority . ($parsedUrl['path'] ?? '/');
+            if ($this->isExcluded($url, $domain)) {
+                return;
+            }
+
             $req['url'] = $url;
             $req['headers'] = $this->headers($req['headers'] ?? []);
             if (isset($req['body']) && is_string($req['body'])) {
@@ -71,8 +70,8 @@ class HttpClientWatcher extends Watcher
                 'response_status' => $status,
                 'response_headers' => $this->headers($resp['headers'] ?? []),
             ])
-            ->duration($duration)
-            ->tags($tags);
+                ->duration($duration)
+                ->tags($tags);
 
             $this->record($entry);
         });

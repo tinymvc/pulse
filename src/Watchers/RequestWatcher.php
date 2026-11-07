@@ -36,7 +36,7 @@ class RequestWatcher extends Watcher
                 return;
             }
 
-            if ($this->pulse->ignoresRequest($request)) {
+            if ($this->pulse->ignoresRequest($request) || $this->isPathExcluded($request->getPath())) {
                 return;
             }
 

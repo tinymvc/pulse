@@ -56,6 +56,22 @@
             compact.addEventListener('change', syncNavigation);
         }
 
+        // Escape dismisses a tooltip while its control keeps keyboard focus.
+        const headerActions = document.querySelectorAll('.bar-actions [data-tip]');
+        for (const action of headerActions) {
+            const resetTip = () => action.removeAttribute('data-tip-dismissed');
+            action.addEventListener('pointerenter', resetTip);
+            action.addEventListener('focus', resetTip);
+        }
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                for (const action of headerActions) {
+                    if (action.matches(':hover, :focus-visible')) action.setAttribute('data-tip-dismissed',
+                        '');
+                }
+            }
+        });
+
         /* Theme toggle (works on every page) */
         const themeButton = document.getElementById('theme');
         if (themeButton) {
@@ -123,7 +139,6 @@
 
         const clear = document.getElementById('clear');
         const notice = document.getElementById('notice');
-        const label = document.getElementById('refresh-label');
         const setting = 'pulse:live:' + location.pathname;
         let live = true;
         try {
@@ -139,7 +154,7 @@
 
         function updateToggle() {
             toggle.setAttribute('aria-pressed', String(live));
-            label.textContent = live ? 'Live updates' : 'Updates paused';
+            toggle.dataset.tip = live ? 'Pause live updates' : 'Resume live updates';
         }
 
         async function refresh() {

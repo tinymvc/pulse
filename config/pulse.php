@@ -55,57 +55,73 @@ return [
         'client_secret',
     ],
 
+    // Exclusions match complete, case-sensitive identifiers. Use * as a wildcard.
     'watchers' => [
         'requests' => [
             'enabled' => true,
+            'exclude' => [], // Request path
             'ignore_status_codes' => [],
         ],
         'commands' => [
             'enabled' => true,
+            'exclude' => [], // Command name
         ],
         'jobs' => [
             'enabled' => true,
+            'exclude' => [], // Job class or display name
         ],
         'cache' => [
             'enabled' => true,
+            'exclude' => [], // Cache key
         ],
         'events' => [
             'enabled' => true,
-            'ignore' => [],
+            'exclude' => [], // Event name
+            'ignore' => [], // Legacy exact event names
         ],
         'exceptions' => [
             'enabled' => true,
+            'exclude' => [], // Exception class
         ],
         'gates' => [
             'enabled' => true,
+            'exclude' => [], // Ability name
         ],
         'http_client' => [
             'enabled' => true,
+            'exclude' => [], // Host or URL without query string
         ],
         'logs' => [
             'enabled' => true,
+            'exclude' => [], // Log level or message
             'level' => 'debug',
         ],
         'mail' => [
             'enabled' => true,
+            'exclude' => [], // Subject or To address
             'record_body' => false,
         ],
         'models' => [
             'enabled' => true,
+            'exclude' => [], // Model class
         ],
         'queries' => [
             'enabled' => true,
+            'exclude' => [], // SQL statement or connection name
             'detect_duplicates' => true,
             'record_bindings' => false,
         ],
         'views' => [
             'enabled' => true,
+            'exclude' => [], // Recorded template name or compiled path
         ],
         'language_files' => [
             'enabled' => true,
+            'exclude' => [], // Recorded translation file path
         ],
         'performance' => [
             'enabled' => true,
+            'exclude' => [], // Request path that triggers the sample
             'sample_rate' => 1,
         ],
     ],

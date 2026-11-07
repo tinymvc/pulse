@@ -29,13 +29,7 @@ class QueryWatcher extends Watcher
 
     protected function boot(): void
     {
-        Telemetry::listen('db.queryExecuted', function (
-            string|array $sql,
-            float $time = 0,
-            array|int $bindings = [],
-            int|string $memory = 0,
-            string $connection = 'default'
-        ) {
+        Telemetry::listen('db.queryExecuted', function (string|array $sql, float $time = 0, array|int $bindings = [], int|string $memory = 0, string $connection = 'default') {
             // Direct DB calls omit bindings; the query builder includes them.
             if (is_array($sql)) {
                 $bindings = $sql['bindings'] ?? [];
@@ -49,6 +43,9 @@ class QueryWatcher extends Watcher
 
             $table = (string) config('pulse.storage.table', 'pulse_entries');
             if ($sql === '' || str_contains($sql, $table) || !$this->pulse->shouldRecord()) {
+                return;
+            }
+            if ($this->isExcluded($sql, $connection)) {
                 return;
             }
 

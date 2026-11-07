@@ -5,6 +5,7 @@ namespace Spark\Pulse\Console;
 use FilesystemIterator;
 use RuntimeException;
 use Spark\Console\Prompt;
+use function array_key_exists;
 
 class InstallCommand
 {
@@ -35,7 +36,7 @@ class InstallCommand
     {
         if (is_dir($source)) {
             foreach (new FilesystemIterator($source) as $file) {
-                $this->publish($file->getPathname(), $destination . '/' . $file->getFilename());
+                $this->publish($file->getPathname(), "$destination/" . $file->getFilename());
             }
             return;
         }

@@ -31,7 +31,7 @@ class ViewWatcher extends Watcher
                 $path = (string) ($path['path'] ?? '');
             }
             $template ??= preg_replace('/_[a-f0-9]{32}\\.php$/', '', basename($path));
-            if (!$this->pulse->shouldRecord()) {
+            if (!$this->pulse->shouldRecord() || $this->isExcluded($template, $path)) {
                 return;
             }
 

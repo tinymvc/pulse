@@ -45,7 +45,7 @@ class EventWatcher extends Watcher
 
             // Check if event is in ignore list
             $ignored = (array) config('pulse.watchers.events.ignore', []);
-            if (in_array($eventName, $ignored, true)) {
+            if (in_array($eventName, $ignored, true) || $this->isExcluded($eventName)) {
                 return;
             }
 

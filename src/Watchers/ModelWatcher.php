@@ -25,6 +25,10 @@ class ModelWatcher extends Watcher
     {
         Telemetry::listen('model.action', function (array $payload) {
             $model = (string) ($payload['model'] ?? 'Model');
+            if ($this->isExcluded($model)) {
+                return;
+            }
+
             $action = (string) ($payload['action'] ?? 'saved');
             $key = $payload['key'] ?? null;
 

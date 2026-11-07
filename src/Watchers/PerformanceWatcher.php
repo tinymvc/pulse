@@ -31,7 +31,7 @@ class PerformanceWatcher extends Watcher
             if (!$request instanceof Request || $rate <= 0 || !$this->pulse->isRecording() || $this->pulse->ignoresRequest($request)) {
                 return;
             }
-            if (random_int(1, 100) <= $rate) {
+            if (!$this->isPathExcluded($request->getPath()) && random_int(1, 100) <= $rate) {
                 $this->captureSnapshot();
             }
         });

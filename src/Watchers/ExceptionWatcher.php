@@ -7,6 +7,7 @@ use Spark\Pulse\EntryType;
 use Spark\Telemetry;
 use Throwable;
 use function array_slice;
+use function get_class;
 
 /**
  * Exception Watcher.
@@ -33,6 +34,10 @@ class ExceptionWatcher extends Watcher
             }
 
             $class = get_class($e);
+            if ($this->isExcluded($class)) {
+                return;
+            }
+
             $file = $e->getFile();
             $line = $e->getLine();
             $message = $e->getMessage();

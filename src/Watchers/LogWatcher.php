@@ -32,6 +32,10 @@ class LogWatcher extends Watcher
                 return;
             }
             $message = (string) ($payload['message'] ?? '');
+            if ($this->isExcluded($message, $level)) {
+                return;
+            }
+
             $context = (array) ($payload['context'] ?? []);
 
             $tags = [$level];

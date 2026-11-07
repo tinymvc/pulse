@@ -7,6 +7,7 @@ use Spark\Pulse\EntryType;
 use Spark\Queue\Contracts\JobContract;
 use Spark\Telemetry;
 use function get_class;
+use function is_array;
 use function is_object;
 
 /**
@@ -31,7 +32,10 @@ class JobWatcher extends Watcher
             $job = $payload['job'] ?? null;
             $queue = (string) ($payload['queue'] ?? 'default');
 
-            $jobName = $job instanceof JobContract ? $job->getDisplayName() : (is_object($job) ? get_class($job) : 'Job');
+            $jobName = $this->recordableName($job);
+            if ($jobName === null) {
+                return;
+            }
 
             $entry = Entry::make(EntryType::JOB, [
                 'status' => 'queued',
@@ -49,7 +53,10 @@ class JobWatcher extends Watcher
             $job = $payload['job'] ?? null;
             $queue = (string) ($payload['queue'] ?? 'default');
             $duration = (float) ($payload['duration_ms'] ?? 0.0);
-            $jobName = $job instanceof JobContract ? $job->getDisplayName() : (is_object($job) ? get_class($job) : 'Job');
+            $jobName = $this->recordableName($job);
+            if ($jobName === null) {
+                return;
+            }
 
             $slowThreshold = (float) config('pulse.slow_thresholds.job', 1000);
             $tags = [$jobName, $queue, 'processed'];
@@ -76,7 +83,10 @@ class JobWatcher extends Watcher
             $queue = (string) ($payload['queue'] ?? 'default');
             $duration = (float) ($payload['duration_ms'] ?? 0.0);
             $exception = $payload['exception'] ?? null;
-            $jobName = $job instanceof JobContract ? $job->getDisplayName() : (is_object($job) ? get_class($job) : 'Job');
+            $jobName = $this->recordableName($job);
+            if ($jobName === null) {
+                return;
+            }
 
             $entry = Entry::make(EntryType::JOB, [
                 'status' => 'failed',
@@ -97,5 +107,20 @@ class JobWatcher extends Watcher
 
             $this->record($entry);
         });
+    }
+
+    private function recordableName(mixed $job): ?string
+    {
+        $class = is_object($job) ? get_class($job) : 'Job';
+        if (!$job instanceof JobContract) {
+            return $this->isExcluded($class) ? null : $class;
+        }
+
+        $name = $job->getDisplayName();
+        $callback = $job->getCallback();
+        $handler = is_array($callback) ? ($callback[0] ?? '') : $callback;
+        $handlerClass = is_object($handler) ? $handler::class : explode('::', (string) $handler, 2)[0];
+
+        return $this->isExcluded($name, $handlerClass, $class) ? null : $name;
     }
 }

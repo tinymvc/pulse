@@ -42,6 +42,34 @@ Edit `config/pulse.php` to enable individual watchers, ignore paths or commands,
 
 Pulse masks configured sensitive keys in structured watcher payloads. SQL bindings and mail bodies are opt-in through `watchers.queries.record_bindings` and `watchers.mail.record_body`. Free-text logs, raw SQL, and exception messages can contain application data.
 
+### Watcher exclusions
+
+In `config/pulse.php`, add `exclude` to any watcher. For example, to skip queued, processed, and failed entries for one job, set the following inside `watchers`.
+
+```php
+'jobs' => [
+    'enabled' => true,
+    'exclude' => [\App\Jobs\PublishRealtime::class],
+],
+```
+
+Rules are case-sensitive and match a whole identifier. Use `*` for a wildcard, such as `'App\Jobs\Realtime\*'` for a namespace or `'session:*'` for cache keys. An empty list records all otherwise eligible entries.
+
+| Watcher | What `exclude` matches |
+| --- | --- |
+| `jobs`, `models`, `exceptions` | Fully qualified class name. Jobs also support their queue display name |
+| `requests`, `performance` | Incoming request path, with or without the leading slash |
+| `commands`, `events`, `gates` | Command name, named event, or ability, respectively |
+| `cache` | Cache key, including individual keys in a bulk forget |
+| `http_client` | Host or URL without credentials, query string, or fragment |
+| `logs` | Lowercase log level or message |
+| `mail` | Subject or any To address, for sent and failed mail |
+| `queries` | SQL statement or connection name |
+| `views` | Template name shown in Pulse or compiled file path |
+| `language_files` | File path shown in Pulse, such as `lang/en/orders.php` |
+
+Each rule affects new entries from that watcher. An excluded job still runs, and its queries and logs follow their own rules. Use the top-level `ignore_paths` to silence all watchers during matching HTTP requests. Restart long-running queue workers after changing their configuration.
+
 ## Access
 
 The dashboard and API allow access by default in the `local` and `testing` environments. To grant access elsewhere, register an authorization callback in your application provider's `boot()` method. This example uses a Spark ability defined by your application.
