@@ -12,7 +12,7 @@
         default => 'tag-ok',
     };
 @endphp
-<section class="panel entries" data-live="entries">
+<section class="panel entries{{ $overview ? ' recent' : '' }}" data-live="entries">
     <div class="section-head">
         <h2>{{ $overview ? 'Recent requests' : 'Recorded entries' }}</h2>
         @if ($overview)
@@ -33,12 +33,13 @@
                         <th>{{ $languageFiles ? 'File' : 'Entry' }}</th>
                         <th>{{ $languageFiles ? 'PHP allocation change' : ($overview ? 'Status' : 'Tags') }}</th>
                         <th>{{ $languageFiles ? 'Load time' : 'Duration' }}</th>
-                        <th>Time (UTC)</th>
+                        <th data-time-heading>Time (UTC)</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($page['entries'] as $row)
                         @php
+                            $date = date_create_immutable($row['created_at']);
                             $summary = Entry::summary($row);
                             $link = $path . '?' . http_build_query(array_merge($filters, ['entry' => $row['id']]));
                             $tags = $overview ? [$row['content']['status'] ?? '—'] : array_slice($row['tags'], 0, 2);
@@ -65,8 +66,8 @@
                                 <td class="mono">{{ $row['duration'] !== null ? $row['duration'] . ' ms' : '—' }}
                                 </td>
                             @endif
-                            <td class="mono"><time datetime="{{ $row['created_at'] }}"
-                                    title="{{ $row['created_at'] }}">{{ substr($row['created_at'], 11, 8) }}</time>
+                            <td class="mono"><time data-local-time="clock" datetime="{{ $row['created_at'] }}"
+                                    title="{{ $row['created_at'] }}">{{ $date ? $date->format('g:i:s A') : $row['created_at'] }}</time>
                             </td>
                         </tr>
                     @endforeach

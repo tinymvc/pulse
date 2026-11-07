@@ -2,6 +2,34 @@
     (() => {
         const root = document.documentElement;
 
+        const clockFields = { hour: 'numeric', minute: '2-digit', second: '2-digit', hourCycle: 'h12' };
+        const clocks = {
+            clock: new Intl.DateTimeFormat(undefined, clockFields),
+            trace: new Intl.DateTimeFormat(undefined, { ...clockFields, fractionalSecondDigits: 3 }),
+            detail: new Intl.DateTimeFormat(undefined, {
+                ...clockFields, year: 'numeric', month: 'short', day: 'numeric', timeZoneName: 'shortOffset'
+            })
+        };
+        const timeZone = clocks.clock.resolvedOptions().timeZone;
+
+        function displayLocalTimes(scope) {
+            for (const heading of scope.querySelectorAll('[data-time-heading]')) {
+                heading.textContent = 'Local time';
+                heading.title = timeZone;
+            }
+            for (const time of scope.querySelectorAll('time[data-local-time]')) {
+                // Pulse stores UTC with six fractional digits. JS dates carry milliseconds.
+                const iso = time.dateTime.replace(/(\.\d{3})\d+/, '$1');
+                const instant = new Date(iso);
+                if (!Number.isFinite(instant.getTime())) continue;
+
+                time.textContent = clocks[time.dataset.localTime].format(instant);
+                time.title = clocks.detail.format(instant) + ' (' + timeZone + ')';
+            }
+        }
+
+        displayLocalTimes(document);
+
         /* Theme toggle (works on every page) */
         const themeButton = document.getElementById('theme');
         if (themeButton) {
@@ -73,6 +101,7 @@
                 const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
                 if (!doc.querySelector('[data-live="entries"]')) throw new Error();
                 if (!live || clearing) return;
+                displayLocalTimes(doc);
                 for (const region of document.querySelectorAll('[data-live]')) {
                     const updated = doc.querySelector('[data-live="' + region.dataset.live + '"]');
                     if (updated && !region.contains(document.activeElement) && !region.isEqualNode(updated)) {

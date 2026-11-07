@@ -5,8 +5,9 @@
 <section class="panel detail">
     <div class="section-head">
         <h2>{{ $labels[$entry['type']] ?? $entry['type'] }}</h2>
-        <time class="mono count" datetime="{{ $entry['created_at'] }}">{{ substr($entry['created_at'], 0, 10) }} ·
-            {{ substr($entry['created_at'], 11, 8) }} UTC</time>
+        @php($date = date_create_immutable($entry['created_at']))
+        <time class="mono count" data-local-time="detail"
+            datetime="{{ $entry['created_at'] }}">{{ $date ? $date->format('Y-m-d · g:i:s A') . ' UTC' : $entry['created_at'] }}</time>
     </div>
     <div class="detail-body">
         <h3>{{ Entry::summary($entry) }}</h3>
@@ -38,8 +39,7 @@
                     <div>
                         <dt>Largest language file allocation increase</dt>
                         <dd><a
-                                href="{{ $path . '?' . http_build_query(array_merge($filters, ['entry' => $largest['id']])) }}">{{ ServerPerformanceRecorder::formatByteChange($largest['content']['allocated_change_bytes']) }}
-                                · {{ Entry::summary($largest) }}</a></dd>
+                                href="{{ $path . '?' . http_build_query(array_merge($filters, ['entry' => $largest['id']])) }}">{{ ServerPerformanceRecorder::formatByteChange($largest['content']['allocated_change_bytes']) . ' · ' . Entry::summary($largest) }}</a></dd>
                     </div>
                 @endif
             @endif
@@ -67,16 +67,17 @@
     <ol>
         @foreach ($trace as $step)
             <li>
-                <span class="mono">{{ substr($step['created_at'], 11, 12) }}</span>
+                @php($date = date_create_immutable($step['created_at']))
+                <time class="mono" data-local-time="trace" datetime="{{ $step['created_at'] }}"
+                    title="{{ $step['created_at'] }}">{{ $date ? $date->format('g:i:s.v A') : $step['created_at'] }}</time>
                 <div><small>{{ $labels[$step['type']] ?? $step['type'] }}</small>
                     <a href="{{ $path . '?' . http_build_query(array_merge($filters, ['entry' => $step['id']])) }}"
                         @if ($step['id'] === $entry['id']) aria-current="page" @endif>{{ Entry::summary($step) }}</a>
                     @if (
                         $step['type'] === EntryType::LANGUAGE_FILE &&
                             isset($step['content']['duration_ms'], $step['content']['allocated_change_bytes']))
-                        <small>{{ ServerPerformanceRecorder::formatDuration($step['content']['duration_ms']) }} · PHP
-                            allocation
-                            {{ ServerPerformanceRecorder::formatByteChange($step['content']['allocated_change_bytes']) }}</small>
+                        <small>{{ ServerPerformanceRecorder::formatDuration($step['content']['duration_ms']) }} ·
+                            {{ 'PHP allocation ' . ServerPerformanceRecorder::formatByteChange($step['content']['allocated_change_bytes']) }}</small>
                     @endif
                 </div>
             </li>

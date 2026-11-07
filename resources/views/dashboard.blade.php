@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $entry ? 'Entry details' : ($overview ? 'Overview' : ucfirst($tab)) }} · Spark Pulse</title>
+    <title>{{ $entry ? 'Entry details' : ($overview ? 'Overview' : array_merge(...array_values($groups))[$tab]) }} · Spark Pulse</title>
     <script>
         (function() {
             var theme;
