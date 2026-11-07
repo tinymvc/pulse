@@ -15,6 +15,7 @@ use Spark\Url;
 use Throwable;
 use function is_array;
 use function is_float;
+use function is_int;
 use function is_object;
 use function is_resource;
 use function is_string;

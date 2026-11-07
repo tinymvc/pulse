@@ -77,7 +77,6 @@ return [
         'events' => [
             'enabled' => true,
             'exclude' => [], // Event name
-            'ignore' => [], // Legacy exact event names
         ],
         'exceptions' => [
             'enabled' => true,

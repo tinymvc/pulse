@@ -85,21 +85,7 @@ class PulseServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if ($this->app->bound(VendorPublisher::class)) {
-            $package = dirname(__DIR__);
-            $this->publishes(["$package/config/pulse.php" => root_dir('config/pulse.php')], 'pulse-config');
-            $this->publishes(["$package/database/migrations" => root_dir('database/migrations')], 'pulse-migrations');
-            $this->publishes(["$package/resources/views" => views_dir('vendor/pulse')], 'pulse-views');
-        }
-
-        if ($this->app->bound(Commands::class)) {
-            /** @var Commands $commands */
-            $commands = $this->app->get(Commands::class);
-            $commands->addCommand('pulse:install', [InstallCommand::class, 'handle'], 'Publish the Pulse configuration and migration');
-            $commands->addCommand('pulse:clear', [ClearCommand::class, 'handle'], 'Clear all recorded Spark Pulse entries');
-            $commands->addCommand('pulse:prune', [PruneCommand::class, 'handle'], 'Prune old Spark Pulse entries');
-            $commands->addCommand('pulse:check', [CheckCommand::class, 'handle'], 'Check Spark Pulse status and active watchers');
-        }
+        is_cli() && $this->registerConsoleCommands();
 
         if (!config('pulse.enabled', true)) {
             return;
@@ -142,5 +128,24 @@ class PulseServiceProvider extends ServiceProvider
         };
         Telemetry::listen('job.processed', $finishJob, PHP_INT_MIN);
         Telemetry::listen('job.failed', $finishJob, PHP_INT_MIN);
+    }
+
+    private function registerConsoleCommands(): void
+    {
+        if ($this->app->bound(VendorPublisher::class)) {
+            $package = dirname(__DIR__);
+            $this->publishes(["$package/config/pulse.php" => root_dir('config/pulse.php')], 'pulse-config');
+            $this->publishes(["$package/database/migrations" => root_dir('database/migrations')], 'pulse-migrations');
+            $this->publishes(["$package/resources/views" => views_dir('vendor/pulse')], 'pulse-views');
+        }
+
+        if ($this->app->bound(Commands::class)) {
+            /** @var Commands $commands */
+            $commands = $this->app->get(Commands::class);
+            $commands->addCommand('pulse:install', [InstallCommand::class, 'handle'], 'Publish the Pulse configuration and migration');
+            $commands->addCommand('pulse:clear', [ClearCommand::class, 'handle'], 'Clear all recorded Spark Pulse entries');
+            $commands->addCommand('pulse:prune', [PruneCommand::class, 'handle'], 'Prune old Spark Pulse entries');
+            $commands->addCommand('pulse:check', [CheckCommand::class, 'handle'], 'Check Spark Pulse status and active watchers');
+        }
     }
 }

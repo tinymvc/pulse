@@ -2,6 +2,7 @@
 
 namespace Spark\Pulse\Recorders;
 
+use function array_slice;
 use function count;
 use function floatval;
 

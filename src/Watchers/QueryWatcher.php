@@ -67,7 +67,7 @@ class QueryWatcher extends Watcher
             }
             $duplicateCount = 1;
             if (config('pulse.watchers.queries.detect_duplicates', true)) {
-                $key = md5($connection . ':' . $sql);
+                $key = md5("$connection:$sql");
                 $duplicateCount = self::$seenQueries[$key] = (self::$seenQueries[$key] ?? 0) + 1;
             }
             $isDuplicate = $duplicateCount > 1;

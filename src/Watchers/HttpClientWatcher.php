@@ -5,6 +5,7 @@ namespace Spark\Pulse\Watchers;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Telemetry;
+use function is_array;
 
 /**
  * Outbound HTTP Client Watcher.

@@ -4,6 +4,8 @@ namespace Spark\Pulse\Http\Middleware;
 
 use Closure;
 use Spark\Contracts\Http\MiddlewareInterface;
+use Spark\Foundation\Application;
+use Spark\Http\Header;
 use Spark\Http\Request;
 use Spark\Http\Response;
 use Spark\Pulse\Pulse;
@@ -37,6 +39,10 @@ class AuthorizePulse implements MiddlewareInterface
             return Response::error(Response::STATUS_FORBIDDEN, 'Forbidden: You are not authorized to access Spark Pulse.');
         }
 
-        return $next($request)->setHeader('Cache-Control', 'private, no-store');
+        Application::$app->prepareResponseUsing(
+            static fn(Response $response) => $response->setHeader(Header::CACHE_CONTROL, 'private, no-store')
+        );
+
+        return $next($request);
     }
 }

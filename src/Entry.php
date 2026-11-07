@@ -4,6 +4,7 @@ namespace Spark\Pulse;
 
 use JsonSerializable;
 use function in_array;
+use function is_scalar;
 
 /**
  * Normalized telemetry data transfer object for Spark Pulse.

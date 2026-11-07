@@ -43,12 +43,6 @@ class EventWatcher extends Watcher
                 return;
             }
 
-            // Check if event is in ignore list
-            $ignored = (array) config('pulse.watchers.events.ignore', []);
-            if (in_array($eventName, $ignored, true) || $this->isExcluded($eventName)) {
-                return;
-            }
-
             $entry = Entry::make(EntryType::EVENT, [
                 'name' => $eventName,
                 'payload' => $this->formatPayload($payload),

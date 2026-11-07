@@ -68,9 +68,10 @@ class Pulse
     public function __construct(?StorageContract $storage = null)
     {
         self::$instance = $this;
-        $this->recording = (bool) config('pulse.enabled', true);
 
-        $this->pauseFile = storage_dir('framework/pulse/paused');
+        $this->recording = (bool) config('pulse.enabled', true);
+        $this->pauseFile = storage_dir('framework/pulse.paused');
+
         $driver = config('pulse.storage.driver', 'database');
         $this->storage = $storage ?? match ($driver) {
             'memory' => new MemoryStorage(),
@@ -104,9 +105,9 @@ class Pulse
     public static function getBatchId(): string
     {
         $app = Application::$app;
-        if ($app?->isHandlingRequest()) {
+        if ($app && $app->isHandlingRequest()) {
             $request = $app->get(Request::class);
-            if (self::$batchRequest?->get() === $request && self::$requestBatchId !== null) {
+            if (self::$batchRequest && self::$batchRequest->get() === $request && self::$requestBatchId !== null) {
                 return self::$requestBatchId;
             }
             return self::newBatchId();
@@ -128,6 +129,7 @@ class Pulse
             self::$batchRequest = WeakReference::create($app->get(Request::class));
             return self::$requestBatchId = $batchId;
         }
+
         return self::$batchId = $batchId;
     }
 
@@ -336,7 +338,10 @@ class Pulse
             return false;
         }
 
-        $env = (string) config('app.env', env('APP_ENV', 'production'));
+        $env = (string) config(
+            'app.env',
+            env('APP_ENV', is_debug_mode() ? 'local' : 'production')
+        );
         return in_array($env, ['local', 'testing'], true);
     }
 

@@ -6,6 +6,7 @@ use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Telemetry;
 use function get_class;
+use function is_array;
 use function is_object;
 use function is_scalar;
 
