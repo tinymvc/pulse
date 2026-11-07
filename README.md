@@ -27,6 +27,8 @@ Visit a route in your application, then open **`/pulse`**. Select an entry to in
 
 Open **Language files** to see which translation files Spark loaded and how long each load took. Request details count the loads, link to the largest observed allocation increase, and show each file in the trace. Cached lookups produce no additional entry. Set `watchers.language_files.enabled` to `false` to disable this watcher.
 
+Open **Exceptions** to inspect the original message, file, line, and stack trace. Pulse also captures route exceptions that reach its middleware and are converted to a 5xx response by an outer middleware. If a controller catches an exception internally, it can report it with `\Spark\Telemetry::emit('exception.occurred', ['exception' => $e, 'handled' => true])`.
+
 ## Reading the measurements
 
 - **Duration** is Spark’s elapsed time in milliseconds. The dashboard displays short operations in microseconds or nanoseconds. A request spans dispatch through response preparation. A Blade duration covers running the compiled template and includes nested renders. Adding trace durations can double-count that work. The dashboard uses the original payload measurement when available.

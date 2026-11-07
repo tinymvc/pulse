@@ -2,13 +2,21 @@
 
 namespace Spark\Pulse\Watchers;
 
+use DateTimeInterface;
+use Spark\Carbon;
+use Spark\Contracts\Support\Arrayable;
 use Spark\Pulse\Contracts\WatcherContract;
 use Spark\Pulse\Entry;
 use Spark\Pulse\Pulse;
+use Spark\Support\Collection;
+use Spark\Support\LazyCollection;
 use Spark\Support\Str;
+use Spark\Url;
+use Throwable;
 use function is_array;
 use function is_float;
 use function is_object;
+use function is_resource;
 use function is_string;
 use function strlen;
 
@@ -153,11 +161,19 @@ abstract class Watcher implements WatcherContract
         return $result;
     }
 
-    private function maskRecursive(array $data, array $sensitiveMap, int &$remaining, int $depth = 0): array
+    /** @return ($data is array ? array : array|string) */
+    private function maskRecursive(array|Arrayable $data, array $sensitiveMap, int &$remaining, int $depth = 0): array|string
     {
         if ($depth >= 12) {
             return ['…'];
         }
+        if ($data instanceof Arrayable) {
+            $data = $this->arrayablePreview($data);
+            if (is_string($data)) {
+                return $data;
+            }
+        }
+
         $preview = [];
         foreach ($data as $key => $value) {
             if ($remaining-- <= 0) {
@@ -165,14 +181,24 @@ abstract class Watcher implements WatcherContract
                 break;
             }
             if (isset($sensitiveMap[$this->normalizeKey((string) $key)])) {
-                $value = '********';
-            } elseif (is_array($value)) {
+                $preview[$key] = '********';
+                continue;
+            }
+
+            if ($value instanceof Carbon) {
+                $value = $value->toIsoUtcString();
+            } elseif ($value instanceof DateTimeInterface) {
+                $value = Carbon::instance($value)->toIsoUtcString();
+            } elseif ($value instanceof Url) {
+                $value = $value->getUrl();
+            } elseif (is_array($value) || $value instanceof Arrayable) {
                 $value = $this->maskRecursive($value, $sensitiveMap, $remaining, $depth + 1);
             } elseif (is_object($value) || is_resource($value)) {
                 $value = get_debug_type($value);
             } elseif (is_float($value) && !is_finite($value)) {
                 $value = (string) $value;
-            } elseif (is_string($value)) {
+            }
+            if (is_string($value)) {
                 if (strlen($value) > 8192) {
                     $value = substr($value, 0, 8192) . '…';
                 }
@@ -183,5 +209,21 @@ abstract class Watcher implements WatcherContract
             $preview[$key] = $value;
         }
         return $preview;
+    }
+
+    private function arrayablePreview(Arrayable $value): array|string
+    {
+        // A lazy collection may wrap a one-shot or unbounded generator.
+        if ($value instanceof LazyCollection) {
+            return get_debug_type($value);
+        }
+
+        try {
+            // Keep collection items intact so each nested key is masked before conversion.
+            $items = $value instanceof Collection ? $value->all() : $value->toArray();
+            return is_array($items) ? $items : get_debug_type($value);
+        } catch (Throwable) {
+            return get_debug_type($value);
+        }
     }
 }

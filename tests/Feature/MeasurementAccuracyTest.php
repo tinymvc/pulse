@@ -2,6 +2,10 @@
 
 namespace Tests\Feature;
 
+use DateTime;
+use Spark\Carbon;
+use Spark\Contracts\Support\Arrayable;
+use Spark\Database\Model;
 use Spark\Facades\DB;
 use Spark\Http\Routing\Router;
 use Spark\Pulse\Entry;
@@ -9,7 +13,10 @@ use Spark\Pulse\Pulse;
 use Spark\Pulse\Recorders\ServerPerformanceRecorder;
 use Spark\Pulse\Storage\MemoryStorage;
 use Spark\Pulse\Watchers\PerformanceWatcher;
+use Spark\Support\Collection;
+use Spark\Support\LazyCollection;
 use Spark\Telemetry;
+use Spark\Url;
 use Tests\TestCase;
 
 class MeasurementAccuracyTest extends TestCase
@@ -47,6 +54,37 @@ class MeasurementAccuracyTest extends TestCase
         $this->get('/pulse?entry=' . $request['id'])->assertOk()->assertSee('Peak PHP process allocation');
         Pulse::instance()->flush();
         $this->assertSame(2, Pulse::instance()->storage()->count('query'));
+    }
+
+    public function test_model_save_records_cast_dates_and_original_values_in_utc(): void
+    {
+        DB::exec('CREATE TABLE members (id INTEGER PRIMARY KEY, onboarded_at TEXT, verified_at TEXT, password TEXT, created_at TEXT, updated_at TEXT)');
+        DB::table('members')->insert([
+            'id' => 1,
+            'onboarded_at' => '2026-11-01T06:46:50+06:00',
+            'password' => 'private',
+            'created_at' => '2026-10-31T20:00:00-04:00',
+        ]);
+
+        $member = TimestampedMember::findOrFail(1);
+        $member->onboarded_at = new Carbon('2026-11-02 01:05:07.123456', 'Asia/Dhaka');
+        $member->verified_at = new DateTime('2026-11-03T01:02:03.456789-04:00');
+        $this->assertTrue($member->save());
+        Pulse::instance()->flush();
+
+        $entry = $this->get('/pulse/api/entries?type=models')->assertOk()->json('entries.0');
+        $this->assertSame('updated', $entry['content']['action']);
+        $this->assertSame(TimestampedMember::class, $entry['content']['model']);
+        $attributes = $entry['content']['attributes'];
+        $this->assertSame('2026-11-01T19:05:07.123456Z', $attributes['onboarded_at']);
+        $this->assertSame('2026-11-03T05:02:03.456789Z', $attributes['verified_at']);
+        $this->assertSame('2026-11-01T00:00:00.000000Z', $attributes['created_at']);
+        $this->assertSame('********', $attributes['password']);
+        $this->assertSame('2026-11-01T00:46:50.000000Z', $entry['content']['changes']['onboarded_at']);
+        $this->assertNull($entry['content']['changes']['verified_at']);
+        $this->assertSame('Asia/Dhaka', $member->onboarded_at->getTimezone()->getName());
+        $this->assertSame('-04:00', $member->verified_at->format('P'));
+        $this->get('/pulse?entry=' . $entry['id'])->assertOk()->assertSee($attributes['onboarded_at']);
     }
 
     public function test_sub_millisecond_and_missing_measurements_remain_distinct(): void
@@ -133,8 +171,14 @@ class MeasurementAccuracyTest extends TestCase
 
     public function test_outbound_transport_failure_records_its_class_and_preserves_elapsed_time(): void
     {
-        Telemetry::emit('http.request', 'https://api.test/probe?token=secret', [], ['status' => 0], 31.25,
-            new \RuntimeException('Transfer failed at https://api.test/probe?token=secret'));
+        Telemetry::emit(
+            'http.request',
+            'https://api.test/probe?token=secret',
+            [],
+            ['status' => 0],
+            31.25,
+            new \RuntimeException('Transfer failed at https://api.test/probe?token=secret')
+        );
         $pulse = Pulse::instance();
         $pulse->flush();
         $row = $this->get('/pulse/api/entries?type=http_client')->assertOk()->json()['entries'][0];
@@ -148,10 +192,15 @@ class MeasurementAccuracyTest extends TestCase
     {
         $payload = new class {
             public string $status = 'ready';
-            public function toArray(): array { throw new \LogicException('Unexpected serialization'); }
+            public function toArray(): array
+            {
+                throw new \LogicException('Unexpected serialization');
+            }
         };
         $called = false;
-        event()->addListener('sample.ready', function () use (&$called) { $called = true; }, -1);
+        event()->addListener('sample.ready', function () use (&$called) {
+            $called = true;
+        }, -1);
         event('sample.ready', [$payload]);
         $this->assertTrue($called);
         Telemetry::emit('log.logged', ['message' => 'Metric', 'context' => ['ratio' => INF, 'token' => 'private']]);
@@ -160,4 +209,74 @@ class MeasurementAccuracyTest extends TestCase
         $this->assertSame($payload::class, $pulse->storage()->get('event')['entries'][0]['content']['payload']['class']);
         $this->assertSame(['ratio' => 'INF', 'token' => '********'], $pulse->storage()->get('log')['entries'][0]['content']['context']);
     }
+
+    public function test_arrayable_log_values_are_masked_and_formatted_before_storage(): void
+    {
+        $payload = new class implements Arrayable {
+            public function toArray(): array
+            {
+                return [
+                    'details' => new Collection([
+                        'api-key' => 'private',
+                        'url' => new Url('https://example.test/orders?page=2'),
+                        'at' => new Carbon('2026-11-01T06:46:50.123456+06:00'),
+                    ])
+                ];
+            }
+        };
+        Telemetry::emit('log.logged', ['message' => 'Order', 'context' => ['order' => $payload]]);
+        Pulse::instance()->flush();
+
+        $entry = $this->get('/pulse/api/entries?type=logs')->assertOk()->json('entries.0');
+        $this->assertSame([
+            'api-key' => '********',
+            'url' => 'https://example.test/orders?page=2',
+            'at' => '2026-11-01T00:46:50.123456Z',
+        ], $entry['content']['context']['order']['details']);
+    }
+
+    public function test_failed_serializers_preserve_the_entry_and_arrayable_previews_stay_bounded(): void
+    {
+        $broken = new class implements Arrayable {
+            public function toArray(): array
+            {
+                throw new \RuntimeException('Serializer failed');
+            }
+        };
+        $large = new class implements Arrayable {
+            public function toArray(): array
+            {
+                return range(1, 1500);
+            }
+        };
+        $consumed = false;
+        $lazy = new LazyCollection(static function () use (&$consumed) {
+            $consumed = true;
+            yield 'item';
+        });
+        Telemetry::emit('log.logged', [
+            'message' => 'Preview',
+            'context' => [
+                'objects' => new Collection(['broken' => $broken, 'ok' => 42]),
+                'stream' => $lazy,
+                'large' => $large,
+            ]
+        ]);
+        Pulse::instance()->flush();
+
+        $response = $this->get('/pulse/api/entries?type=logs')->assertOk()->assertJsonCount(1, 'entries');
+        $context = $response->json('entries.0.content.context');
+        $this->assertSame(['broken' => get_debug_type($broken), 'ok' => 42], $context['objects']);
+        $this->assertSame(LazyCollection::class, $context['stream']);
+        $this->assertFalse($consumed);
+        $this->assertSame('[truncated]', $context['large']['…']);
+        $this->assertTrue(count($context['large']) <= 1024);
+    }
+}
+
+final class TimestampedMember extends Model
+{
+    protected string $table = 'members';
+    protected array $fillable = ['onboarded_at', 'verified_at', 'password'];
+    protected array $casts = ['onboarded_at' => 'datetime'];
 }

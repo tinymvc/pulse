@@ -8,6 +8,7 @@ use Spark\Testing\ApplicationTestCase;
 
 abstract class TestCase extends ApplicationTestCase
 {
+    protected array $globalMiddleware = [];
     protected string $dashboardPath = 'pulse';
     protected string $storageDriver = 'memory';
 
@@ -40,7 +41,7 @@ abstract class TestCase extends ApplicationTestCase
             PulseServiceProvider::class,
         ]);
 
-        $app->boot();
+        $app->withMiddleware(queue: $this->globalMiddleware)->boot();
 
         return $app;
     }

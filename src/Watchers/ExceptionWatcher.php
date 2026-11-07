@@ -2,24 +2,25 @@
 
 namespace Spark\Pulse\Watchers;
 
+use Closure;
+use Spark\Exceptions\Http\ResponseException;
+use Spark\Foundation\Application;
+use Spark\Http\Request;
+use Spark\Http\Response;
 use Spark\Pulse\Entry;
 use Spark\Pulse\EntryType;
 use Spark\Telemetry;
 use Throwable;
+use WeakMap;
+use WeakReference;
 use function array_slice;
-use function get_class;
 
-/**
- * Exception Watcher.
- *
- * Records uncaught and handled exceptions with stack traces,
- * family grouping hashes, and execution context.
- *
- * @package Spark\Pulse\Watchers
- * @author Shahin Moyshan <shahin.moyshan2@gmail.com>
- */
+/** Records framework-reported exceptions and route failures rendered by application middleware. */
 class ExceptionWatcher extends Watcher
 {
+    /** @var WeakMap<Throwable, WeakReference<Request>> */
+    private WeakMap $reported;
+
     public function __construct()
     {
         parent::__construct('exceptions');
@@ -27,45 +28,94 @@ class ExceptionWatcher extends Watcher
 
     protected function boot(): void
     {
-        Telemetry::listen('exception.occurred', function (array $payload) {
-            $e = $payload['exception'] ?? null;
-            if (!$e instanceof Throwable) {
+        $this->reported = new WeakMap();
+        Telemetry::listen('exception.occurred', function (array $payload): void {
+            $error = $payload['exception'] ?? null;
+            if (!$error instanceof Throwable) {
                 return;
             }
 
-            $class = get_class($e);
-            if ($this->isExcluded($class)) {
-                return;
+            $request = $payload['request'] ?? null;
+            // The terminal tracer can report the same throwable again after HTTP dispatch unwinds.
+            $terminalReport = ($payload['type'] ?? null) === 'Exception' && Application::$app->resolved(Request::class);
+            if ($request === null && (Application::$app->isHandlingRequest() || $terminalReport)) {
+                $request = Application::$app->get(Request::class);
             }
-
-            $file = $e->getFile();
-            $line = $e->getLine();
-            $message = $e->getMessage();
-            $familyHash = md5($class . ':' . $file . ':' . $line);
-
-            // Clean stack trace
-            $trace = [];
-            foreach (array_slice($e->getTrace(), 0, 30) as $frame) {
-                $trace[] = [
-                    'file' => $frame['file'] ?? '[internal]',
-                    'line' => $frame['line'] ?? 0,
-                    'function' => ($frame['class'] ?? '') . ($frame['type'] ?? '') . ($frame['function'] ?? ''),
-                ];
-            }
-
-            $entry = Entry::make(EntryType::EXCEPTION, [
-                'class' => $class,
-                'message' => $message,
-                'file' => $file,
-                'line' => $line,
-                'code' => $e->getCode(),
-                'trace' => $trace,
-                'handled' => (bool) ($payload['handled'] ?? false),
-            ])
-                ->familyHash($familyHash)
-                ->tags([$class, 'error']);
-
-            $this->record($entry);
+            $this->recordException($error, (bool) ($payload['handled'] ?? false), $request);
         });
+
+        $this->observeMiddlewareFailures();
+    }
+
+    private function observeMiddlewareFailures(): void
+    {
+        /** @var WeakMap<Response, Throwable> $failures */
+        $failures = new WeakMap();
+        $observe = static function (Request $request, Closure $next) use ($failures): mixed {
+            try {
+                return $next($request);
+            } catch (Throwable $error) {
+                if (!$error instanceof ResponseException) {
+                    Application::$app->prepareResponseUsing(static function (Response $response) use ($error, $failures): void {
+                        $failures[$response] = $error;
+                    });
+                }
+                throw $error;
+            }
+        };
+
+        // Application globals wrap this observer and may turn the original throwable into a response.
+        Application::$app->withMiddleware(
+            register: ['pulse.exceptions' => $observe],
+            queue: 'pulse.exceptions'
+        );
+
+        Telemetry::listen('request.handled', function (array $payload) use ($failures): void {
+            $response = $payload['response'] ?? null;
+            if ($response instanceof Response && isset($failures[$response])) {
+                $error = $failures[$response];
+                unset($failures[$response]);
+                if ($response->getStatusCode() >= 500) {
+                    $this->recordException($error, true, $payload['request']);
+                }
+            }
+        });
+    }
+
+    private function recordException(Throwable $error, bool $handled, ?Request $request): void
+    {
+        if ($request !== null) {
+            if (($this->reported[$error] ?? null)?->get() === $request) {
+                return;
+            }
+            $this->reported[$error] = WeakReference::create($request);
+        }
+
+        $class = $error::class;
+        if (!$this->pulse->shouldRecord() || $this->isExcluded($class)) {
+            return;
+        }
+
+        $trace = [];
+        foreach (array_slice($error->getTrace(), 0, 30) as $frame) {
+            $trace[] = [
+                'file' => $frame['file'] ?? '[internal]',
+                'line' => $frame['line'] ?? 0,
+                'function' => ($frame['class'] ?? '') . ($frame['type'] ?? '') . ($frame['function'] ?? ''),
+            ];
+        }
+
+        $entry = Entry::make(EntryType::EXCEPTION, [
+            'class' => $class,
+            'message' => $error->getMessage(),
+            'file' => $error->getFile(),
+            'line' => $error->getLine(),
+            'code' => $error->getCode(),
+            'trace' => $trace,
+            'handled' => $handled,
+        ])->familyHash(md5("$class:" . $error->getFile() . ':' . $error->getLine()))
+            ->tags([$class, 'error']);
+
+        $this->record($entry);
     }
 }
