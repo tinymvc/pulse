@@ -3,7 +3,7 @@
 namespace Spark\Pulse;
 
 use Spark\Console\Commands;
-use Spark\Foundation\Console\VendorPublisher;
+use Spark\Foundation\Console\PublishManager;
 use Spark\Foundation\Providers\ServiceProvider;
 use Spark\Http\Routing\Router;
 use Spark\Pulse\Console\CheckCommand;
@@ -132,7 +132,7 @@ class PulseServiceProvider extends ServiceProvider
 
     private function registerConsoleCommands(): void
     {
-        if ($this->app->bound(VendorPublisher::class)) {
+        if ($this->app->bound(PublishManager::class)) {
             $package = dirname(__DIR__);
             $this->publishes(["$package/config/pulse.php" => root_dir('config/pulse.php')], 'pulse-config');
             $this->publishes(["$package/database/migrations" => root_dir('database/migrations')], 'pulse-migrations');
