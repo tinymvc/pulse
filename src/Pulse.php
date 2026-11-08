@@ -338,11 +338,20 @@ class Pulse
             return false;
         }
 
-        $env = (string) config(
+        return in_array($this->getAppEnv(), ['local', 'testing'], true);
+    }
+
+    /**
+     * Get the current application environment.
+     *
+     * @return string
+     */
+    public function getAppEnv(): string
+    {
+        return (string) config(
             'app.env',
             env('APP_ENV', is_debug_mode() ? 'local' : 'production')
         );
-        return in_array($env, ['local', 'testing'], true);
     }
 
     /**
