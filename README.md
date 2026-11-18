@@ -18,12 +18,6 @@ Install Pulse as a development dependency:
 composer require --dev tinymvc/pulse
 ```
 
-Register the provider in `bootstrap/providers.php`:
-
-```php
-\Spark\Pulse\PulseServiceProvider::class,
-```
-
 Set `APP_ENV=local` in your `.env`, then publish the configuration and migration and create the table:
 
 ```sh
@@ -32,14 +26,6 @@ php spark migrate
 ```
 
 Visit any route in your application, then open **`/pulse`**.
-
-> **Deploying with `composer install --no-dev`?** The provider class will not exist in production. Register it conditionally:
->
-> ```php
-> ...(class_exists(\Spark\Pulse\PulseServiceProvider::class)
->     ? [\Spark\Pulse\PulseServiceProvider::class]
->     : []),
-> ```
 
 ## Usage
 
