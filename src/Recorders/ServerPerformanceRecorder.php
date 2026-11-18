@@ -2,7 +2,6 @@
 
 namespace Spark\Pulse\Recorders;
 
-use Spark\Pulse\Pulse;
 use function array_slice;
 use function count;
 use function floatval;
@@ -207,7 +206,7 @@ class ServerPerformanceRecorder
             'php_version' => PHP_VERSION,
             'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? (PHP_SAPI === 'cli' ? 'CLI (' . php_sapi_name() . ')' : 'Web Server'),
             'spark_version' => \Composer\InstalledVersions::getPrettyVersion('tinymvc/tinycore') ?: \Spark\Foundation\Application::VERSION,
-            'app_env' => app(Pulse::class)->getAppEnv(),
+            'app_env' => \Spark\Foundation\Application::$app->environment(),
             'app_debug' => (bool) config('app.debug', false),
             'uptime_seconds' => self::getSystemUptime(),
         ];

@@ -26,14 +26,11 @@
             "email": "shahin.moyshan2@gmail.com"
         }
     ],
-    "archive": {
-        "exclude": [
-            "/vendor",
-            "/tests",
-            "/composer.lock",
-            "/.gitignore",
-            "/.gitattributes",
-            ".DS_Store"
-        ]
+    "extra": {
+        "spark": {
+            "providers": [
+                "Spark\\Pulse\\PulseServiceProvider"
+            ]
+        }
     }
 }
